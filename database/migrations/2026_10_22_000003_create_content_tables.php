@@ -67,7 +67,9 @@ return new class extends Migration
             $table->string('code_hash', 64);
             $table->text('payload')->nullable(); // JSON đã mã hóa (encrypted:array)
             $table->unsignedTinyInteger('attempts')->default(0);
-            $table->timestamp('expires_at');
+            // DATETIME thay vì TIMESTAMP: MariaDB (XAMPP) tự gắn ON UPDATE CURRENT_TIMESTAMP cho cột
+            // TIMESTAMP NOT NULL đầu tiên, khiến OTP "hết hạn" ngay khi tăng số lần nhập sai.
+            $table->dateTime('expires_at');
             $table->timestamp('consumed_at')->nullable();
             $table->timestamps();
             $table->index(['target', 'purpose', 'consumed_at']);
