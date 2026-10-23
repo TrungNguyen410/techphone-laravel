@@ -1,0 +1,52 @@
+services:
+  app:
+    build: ./docker/php
+    container_name: techphone-laravel-app
+    ports:
+      - "8000:80"
+    environment:
+      # View Blade biên dịch nằm trong container (không ghi lên ổ đĩa Windows, tránh lỗi quyền file).
+      VIEW_COMPILED_PATH: /tmp/laravel-views
+    volumes:
+      - .:/var/www/html
+      # Thư viện Composer để trong volume riêng: đọc file nhanh hơn nhiều so với ổ đĩa Windows.
+      - techphone-vendor:/var/www/html/vendor
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mysql:8.0
+    container_name: techphone-laravel-db
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_DATABASE: techphone
+      MYSQL_USER: techphone
+      MYSQL_PASSWORD: secret
+      MYSQL_ROOT_PASSWORD: root
+      TZ: Asia/Ho_Chi_Minh
+    ports:
+      - "3307:3306"
+    volumes:
+      - techphone-mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  phpmyadmin:
+    image: phpmyadmin:5.2
+    container_name: techphone-laravel-pma
+    environment:
+      PMA_HOST: db
+      PMA_USER: root
+      PMA_PASSWORD: root
+    ports:
+      - "8081:80"
+    depends_on:
+      - db
+
+volumes:
+  techphone-mysql:
+  techphone-vendor:
