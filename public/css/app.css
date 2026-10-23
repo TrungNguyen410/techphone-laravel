@@ -196,6 +196,12 @@
   text-decoration: none;
 }
 
+/* Form tra cứu trong trang tài khoản: bỏ margin âm (chỉ dùng để đè lên banner ở trang tra cứu) */
+.account-order-lookup .lookup-form {
+  max-width: none;
+  margin: 0;
+}
+
 .lookup-error {
   display: flex;
   align-items: center;
