@@ -401,14 +401,77 @@
     button.setAttribute('aria-label', input.type === 'password' ? 'Hiện mật khẩu' : 'Ẩn mật khẩu');
   }));
 
+  /* ---------- Địa chỉ nhận hàng: gợi ý phường/xã theo tỉnh/thành (sau sáp nhập 01/07/2025) ---------- */
+  let wardsPromise = null;
+  const loadWards = (url) => {
+    wardsPromise ||= fetch(url, { headers: { Accept: 'application/json' } })
+      .then((response) => (response.ok ? response.json() : Promise.reject(new Error('wards'))))
+      .catch((error) => { wardsPromise = null; throw error; });
+    return wardsPromise;
+  };
+  const foldVi = (value = '') => String(value).normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/đ/g, 'd').replace(/Đ/g, 'D').replace(/[’']/g, "'").toLowerCase().replace(/\s+/g, ' ').trim();
+  const withoutUnit = (value) => foldVi(value).replace(/^(phuong|xa|dac khu)\s+/, '');
+  // "sai gon" → "Phường Sài Gòn"; tên ngắn trùng giữa phường và xã thì không tự chọn.
+  const matchWard = (wards, typed) => {
+    const target = foldVi(typed);
+    if (!target) return null;
+    const exact = wards.find((ward) => foldVi(ward) === target);
+    if (exact) return exact;
+    if (/^(phuong|xa|dac khu)\s/.test(target)) return null;
+    const candidates = wards.filter((ward) => withoutUnit(ward) === target);
+    return candidates.length === 1 ? candidates[0] : null;
+  };
+  $$('[data-address-fields]').forEach((fields) => {
+    const province = $('select[data-province]', fields);
+    const ward = $('[data-ward-input]', fields);
+    const options = $('[data-ward-options]', fields);
+    const hint = $('[data-ward-hint]', fields);
+    if (!province || !ward) return;
+    let wards = [];
+    const fill = (data) => {
+      wards = data[province.value] || [];
+      options.innerHTML = '';
+      wards.forEach((name) => {
+        const option = document.createElement('option');
+        option.value = name;
+        options.append(option);
+      });
+      ward.disabled = !province.value;
+      ward.placeholder = province.value ? 'Gõ để tìm, ví dụ: Sài Gòn' : 'Chọn tỉnh/thành trước';
+    };
+    const refresh = () => loadWards(fields.dataset.wardsUrl).then(fill).catch(() => {
+      ward.disabled = false;
+      if (hint) {
+        hint.textContent = 'Không tải được danh sách phường/xã, bạn có thể nhập tay.';
+        hint.hidden = false;
+      }
+    });
+    province.addEventListener('change', () => {
+      ward.value = '';
+      refresh();
+    });
+    ward.addEventListener('blur', () => {
+      const official = matchWard(wards, ward.value);
+      if (official) ward.value = official;
+      if (hint) {
+        const unknown = ward.value.trim() && wards.length && !official;
+        hint.textContent = unknown ? 'Chọn phường/xã/đặc khu có trong danh sách của tỉnh/thành đã chọn' : '';
+        hint.hidden = !unknown;
+      }
+    });
+    refresh();
+  });
+
   /* ---------- Thanh toán ---------- */
   const checkout = $('[data-checkout]');
   if (checkout) {
     const subtotal = Number(checkout.dataset.subtotal);
     const quotes = JSON.parse(checkout.dataset.quotes);
     const defaultQuote = JSON.parse(checkout.dataset.defaultQuote);
-    const bank = JSON.parse(checkout.dataset.bank || '{}');
     const momo = JSON.parse(checkout.dataset.momo || '{}');
+    // Chỉ MoMo cần xác nhận "Tôi đã thanh toán" trước khi tạo đơn; chuyển khoản ngân hàng quét QR theo mã đơn sau khi đặt.
+    const CONFIRM_METHODS = ['momo'];
     const submit = $('[data-checkout-submit]', checkout);
     const back = $('[data-payment-back]', checkout);
     const pendingNote = $('[data-payment-pending-note]', checkout);
@@ -427,11 +490,6 @@
       $('[data-discount]', checkout).textContent = `-${money(current.discount)}`;
       $$('[data-order-total]', checkout).forEach((node) => { node.textContent = money(total()); });
       $$('[data-transfer-content]', checkout).forEach((node) => { node.textContent = transferContent(); });
-      const bankQr = $('[data-qr="bank"]', checkout);
-      if (bankQr) {
-        const params = new URLSearchParams({ amount: String(total()), addInfo: transferContent(), accountName: bank.account_name || '' });
-        bankQr.src = `https://img.vietqr.io/image/${bank.bin}-${bank.account_number}-compact2.png?${params}`;
-      }
       const momoQr = $('[data-qr="momo"]', checkout);
       if (momoQr) {
         momoQr.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(`MOMO|${momo.phone || ''}|${total()}|${transferContent()}`)}`;
@@ -442,7 +500,8 @@
       submit.textContent = confirmStep
         ? 'Tôi đã thanh toán'
         : method() === 'card' ? 'Thanh toán qua VNPay'
-          : ['bank', 'momo'].includes(method()) ? 'Tiếp tục thanh toán' : 'Xác nhận đặt hàng';
+          : CONFIRM_METHODS.includes(method()) ? 'Tiếp tục thanh toán'
+            : method() === 'bank' ? 'Đặt hàng và lấy mã QR' : 'Xác nhận đặt hàng';
     };
 
     checkout.addEventListener('change', (event) => {
@@ -452,7 +511,7 @@
       }
       render();
     });
-    $('input[name="phone"]', checkout).addEventListener('input', render);
+    $('input[name="phone"]', checkout)?.addEventListener('input', render);
     back.addEventListener('click', () => { confirmStep = false; render(); });
 
     checkout.addEventListener('submit', (event) => {
@@ -464,7 +523,7 @@
         showToast('error', 'Vui lòng kiểm tra lại thông tin nhận hàng');
         return;
       }
-      if (['bank', 'momo'].includes(method()) && !confirmStep) {
+      if (CONFIRM_METHODS.includes(method()) && !confirmStep) {
         event.preventDefault();
         confirmStep = true;
         render();
@@ -472,7 +531,7 @@
         $(`[data-payment-confirm="${method()}"]`, checkout)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return;
       }
-      $('[data-transfer-input]', checkout).value = ['bank', 'momo'].includes(method()) ? transferContent() : '';
+      $('[data-transfer-input]', checkout).value = CONFIRM_METHODS.includes(method()) ? transferContent() : '';
       submit.disabled = true;
       submit.textContent = method() === 'card' ? 'Đang mở VNPay…' : 'Đang tạo đơn hàng...';
     });
@@ -530,23 +589,224 @@
       $$('article', grid).forEach((card) => card.classList.toggle('primary', card.contains(event.target)));
     });
   });
-  $$('[data-image-input]').forEach((input) => input.addEventListener('change', () => {
-    const label = input.closest('.admin-image-actions').querySelector('[data-image-input-label]');
-    const kept = $$('[data-image-manager] article').length;
-    if (kept + input.files.length > 5) {
-      showToast('error', 'Mỗi sản phẩm tối đa 5 ảnh. Hãy xóa bớt ảnh cũ trước.');
-      input.value = '';
+  /* Ảnh trong trang quản trị: tải lên từ máy tính (bấm chọn hoặc kéo thả), hoặc dùng URL ảnh. */
+  const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+  const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+  const MAX_GALLERY = 5;
+  const acceptImages = (files) => {
+    const list = [...files];
+    const images = list.filter((file) => IMAGE_TYPES.includes(file.type));
+    if (images.length !== list.length) showToast('error', 'Chỉ hỗ trợ ảnh JPG, PNG, WEBP hoặc GIF');
+    const sized = images.filter((file) => file.size <= MAX_IMAGE_BYTES);
+    if (sized.length !== images.length) showToast('error', 'Mỗi ảnh tối đa 5MB');
+    return sized;
+  };
+  const setInputFiles = (input, files) => {
+    if (typeof DataTransfer === 'undefined') return false;
+    const transfer = new DataTransfer();
+    files.forEach((file) => transfer.items.add(file));
+    input.files = transfer.files;
+    return true;
+  };
+  const isHttpUrl = (value) => {
+    try {
+      const url = new URL(value);
+      return ['http:', 'https:'].includes(url.protocol);
+    } catch {
+      return false;
     }
-    label.textContent = input.files.length ? `Đã chọn ${input.files.length} ảnh mới (lưu để tải lên)` : 'JPG, PNG, WEBP hoặc GIF · mỗi ảnh tối đa 5MB';
-  }));
-  $$('[data-single-image-input]').forEach((input) => input.addEventListener('change', () => {
-    const preview = input.closest('.admin-image-upload').querySelector('[data-single-image-preview]');
-    const [file] = input.files;
-    if (!file) return;
-    preview.innerHTML = '';
+  };
+  const previewImage = (container, src) => {
+    container.innerHTML = '';
     const image = document.createElement('img');
-    image.src = URL.createObjectURL(file);
+    image.src = src;
     image.alt = 'Xem trước ảnh';
-    preview.append(image);
-  }));
+    container.append(image);
+  };
+  $$('[data-image-drop]').forEach((zone) => {
+    ['dragenter', 'dragover'].forEach((type) => zone.addEventListener(type, (event) => {
+      event.preventDefault();
+      zone.classList.add('is-dragging');
+    }));
+    ['dragleave', 'drop'].forEach((type) => zone.addEventListener(type, () => zone.classList.remove('is-dragging')));
+    zone.addEventListener('drop', (event) => {
+      event.preventDefault();
+      const input = $('[data-image-input], [data-single-image-input]', zone.closest('.admin-image-field') || zone);
+      if (!input || !event.dataTransfer?.files?.length) return;
+      input.dispatchEvent(new CustomEvent('images-dropped', { detail: [...event.dataTransfer.files] }));
+    });
+  });
+
+  // Nhiều ảnh (điện thoại/phụ kiện): giữ danh sách file đã chọn để xem trước và bỏ bớt từng ảnh.
+  $$('[data-image-input]').forEach((input) => {
+    const field = input.closest('.admin-image-field');
+    const grid = $('[data-image-manager]', field);
+    const previews = $('[data-image-new-previews]', field);
+    const label = $('[data-image-input-label]', field);
+    const defaultLabel = label.textContent;
+    let selected = [];
+    const galleryCount = () => $$('article', grid).length;
+    const render = () => {
+      previews.innerHTML = '';
+      previews.hidden = !selected.length;
+      selected.forEach((file, index) => {
+        const card = document.createElement('article');
+        card.innerHTML = '<img alt=""><span>Ảnh mới</span><div><button type="button" class="danger">Bỏ ảnh</button></div>';
+        $('img', card).src = URL.createObjectURL(file);
+        $('img', card).alt = file.name;
+        $('button', card).addEventListener('click', () => {
+          selected.splice(index, 1);
+          setInputFiles(input, selected);
+          render();
+        });
+        previews.append(card);
+      });
+      label.textContent = selected.length
+        ? `Đã chọn ${selected.length} ảnh từ máy tính (bấm lưu để tải lên)`
+        : defaultLabel;
+    };
+    const add = (files, replace) => {
+      const room = MAX_GALLERY - galleryCount() - (replace ? 0 : selected.length);
+      let accepted = acceptImages(files);
+      if (accepted.length > room) {
+        showToast('error', `Mỗi sản phẩm tối đa ${MAX_GALLERY} ảnh. Hãy xóa bớt ảnh cũ trước.`);
+        accepted = accepted.slice(0, Math.max(0, room));
+      }
+      selected = replace ? accepted : [...selected, ...accepted];
+      if (!setInputFiles(input, selected)) {
+        // Trình duyệt quá cũ không sửa được danh sách file: giữ đúng các file người dùng đã chọn.
+        if (!replace) showToast('error', 'Trình duyệt không hỗ trợ kéo thả, hãy bấm nút tải ảnh lên');
+        selected = [...input.files];
+      }
+      render();
+    };
+    input.addEventListener('change', () => add(input.files, true));
+    input.addEventListener('images-dropped', (event) => add(event.detail, false));
+
+    const draft = $('[data-image-url-draft]', field);
+    const error = $('[data-image-url-error]', field);
+    const addUrl = () => {
+      const url = draft.value.trim();
+      const fail = (message) => { error.textContent = message; error.hidden = false; };
+      if (!isHttpUrl(url)) return fail('URL ảnh phải hợp lệ và bắt đầu bằng http:// hoặc https://');
+      if (galleryCount() + selected.length >= MAX_GALLERY) return fail(`Mỗi sản phẩm tối đa ${MAX_GALLERY} ảnh`);
+      if ($$('input[type="hidden"]', grid).some((hidden) => hidden.value === url)) return fail('Ảnh này đã có trong danh sách');
+      error.hidden = true;
+      $('.admin-image-empty', grid)?.remove();
+      const card = document.createElement('article');
+      card.innerHTML = '<img alt="Ảnh từ URL"><input type="hidden" name="image_urls[]"><label class="image-primary-choice"><input type="radio" name="primary_image"> Ảnh đại diện</label><div><button type="button" class="danger" data-remove-image>Xóa</button></div>';
+      $('img', card).src = url;
+      $('input[type="hidden"]', card).value = url;
+      const radio = $('input[type="radio"]', card);
+      radio.value = url;
+      if (!$('input[type="radio"]:checked', grid)) {
+        radio.checked = true;
+        card.classList.add('primary');
+      }
+      grid.append(card);
+      draft.value = '';
+      return undefined;
+    };
+    $('[data-image-url-add]', field)?.addEventListener('click', addUrl);
+    draft?.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        addUrl();
+      }
+    });
+  });
+
+  // Một ảnh (banner, logo): xem trước ảnh chọn từ máy tính, kéo thả hoặc URL.
+  $$('[data-single-image-input]').forEach((input) => {
+    const field = input.closest('.admin-image-field');
+    const preview = $('[data-single-image-preview]', field);
+    const urlInput = $('[data-image-url-input]', field);
+    const original = preview.innerHTML;
+    const showFile = (file) => {
+      previewImage(preview, URL.createObjectURL(file));
+      if (urlInput) urlInput.value = '';
+      $('[data-image-file-label]', field).textContent = `Đã chọn: ${file.name} (bấm lưu để tải lên)`;
+    };
+    input.addEventListener('change', () => {
+      const [file] = acceptImages(input.files);
+      if (!file) {
+        input.value = '';
+        return;
+      }
+      showFile(file);
+    });
+    input.addEventListener('images-dropped', (event) => {
+      const [file] = acceptImages(event.detail);
+      if (file && setInputFiles(input, [file])) showFile(file);
+    });
+    urlInput?.addEventListener('change', () => {
+      const url = urlInput.value.trim();
+      if (!url) {
+        if (!input.files.length) preview.innerHTML = original;
+        return;
+      }
+      if (!isHttpUrl(url)) {
+        showToast('error', 'URL ảnh phải bắt đầu bằng http:// hoặc https://');
+        return;
+      }
+      input.value = '';
+      previewImage(preview, url);
+    });
+  });
+
+  /* ---------- Chuyển khoản: chờ SePay báo tiền về rồi tải lại trang ---------- */
+  $$('[data-payment-poll]').forEach((panel) => {
+    let stopped = false;
+    const poll = async () => {
+      if (stopped) return;
+      try {
+        const response = await fetch(panel.dataset.paymentPoll, { headers: { Accept: 'application/json' } });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.payment_status === 'paid') {
+            stopped = true;
+            showToast('success', 'Đã nhận thanh toán, đơn hàng đã được xác nhận');
+            setTimeout(() => window.location.reload(), 900);
+            return;
+          }
+          if (!['pending', 'failed'].includes(data.payment_status) || data.status === 'cancelled') {
+            stopped = true;
+            return;
+          }
+        }
+      } catch {
+        // Mạng chập chờn: thử lại ở lượt sau.
+      }
+      setTimeout(poll, document.hidden ? 15000 : 5000);
+    };
+    setTimeout(poll, 5000);
+  });
+
+  /* ---------- Sao chép mã (voucher...) ---------- */
+  document.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-copy]');
+    if (!button) return;
+    try {
+      await navigator.clipboard.writeText(button.dataset.copy);
+      showToast('success', button.dataset.copyMessage || `Đã sao chép mã ${button.dataset.copy}`);
+    } catch {
+      showToast('error', 'Không sao chép được, hãy chọn và sao chép mã thủ công');
+    }
+  });
+
+  /* ---------- Hộp thoại tặng voucher: đơn vị giá trị theo loại ưu đãi ---------- */
+  $$('[data-gift-form]').forEach((form) => {
+    const type = $('[data-gift-type]', form);
+    const sync = () => {
+      $('[data-gift-value-label]', form).textContent = `Giá trị giảm (${type.value === 'percent' ? '%' : 'đ'}) *`;
+      $('[data-gift-max]', form).hidden = type.value !== 'percent';
+      const value = $('input[name="value"]', form);
+      value.max = type.value === 'percent' ? '100' : '';
+      value.step = type.value === 'percent' ? '1' : '1000';
+    };
+    type.addEventListener('change', sync);
+    sync();
+  });
+
+  window.TechPhone = { showToast, money, csrf };
 })();

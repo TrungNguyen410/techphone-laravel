@@ -96,12 +96,27 @@ abstract class SimpleCrudController extends Controller
     private function payload(Request $request, ?Model $item): array
     {
         $attributes = collect($this->fields())
-            ->flatMap(fn ($field, $key) => [$key => mb_strtolower($field['label']), $key.'_file' => mb_strtolower($field['label'])])
+            ->flatMap(fn ($field, $key) => [
+                $key => mb_strtolower($field['label']),
+                $key.'_file' => mb_strtolower($field['label']),
+                $key.'_url' => 'URL '.mb_strtolower($field['label']),
+            ])
             ->all();
-        $data = $request->validate($this->rules($item), [
+        $rules = $this->rules($item);
+        foreach ($this->fields() as $key => $field) {
+            if ($field['type'] === 'image') {
+                $rules[$key.'_file'] = [...($rules[$key.'_file'] ?? ['nullable', 'image', 'max:5120']), 'mimes:jpg,jpeg,png,webp,gif'];
+                $rules[$key.'_url'] = ['nullable', 'url:http,https', 'max:500'];
+            }
+        }
+        $data = $request->validate($rules, [
             'required' => 'Vui lòng nhập :attribute',
+            'required_without' => 'Vui lòng tải ảnh lên từ máy tính hoặc nhập URL ảnh',
             'unique' => ':attribute đã tồn tại',
             'image' => 'File tải lên phải là ảnh',
+            'mimes' => 'Chỉ hỗ trợ ảnh JPG, PNG, WEBP hoặc GIF',
+            'max' => ':attribute vượt quá giới hạn cho phép',
+            'url' => ':attribute không hợp lệ (cần bắt đầu bằng http:// hoặc https://)',
         ], $attributes);
 
         foreach ($this->fields() as $key => $field) {
@@ -109,16 +124,20 @@ abstract class SimpleCrudController extends Controller
                 $data[$key] = $request->boolean($key);
             }
             if ($field['type'] === 'image') {
+                // Ưu tiên ảnh tải lên từ máy tính, sau đó tới URL ảnh, cuối cùng là yêu cầu xóa ảnh.
                 if ($request->hasFile($key.'_file')) {
                     $this->uploader->delete($item?->{$key});
                     $data[$key] = $this->uploader->store($request->file($key.'_file'), $this->resource());
+                } elseif ($request->filled($key.'_url')) {
+                    $this->uploader->delete($item?->{$key});
+                    $data[$key] = trim((string) $request->input($key.'_url'));
                 } elseif ($request->boolean($key.'_remove')) {
                     $this->uploader->delete($item?->{$key});
                     $data[$key] = '';
                 } else {
                     unset($data[$key]);
                 }
-                unset($data[$key.'_file'], $data[$key.'_remove']);
+                unset($data[$key.'_file'], $data[$key.'_url'], $data[$key.'_remove']);
             }
         }
 

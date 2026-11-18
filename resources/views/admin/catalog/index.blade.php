@@ -42,7 +42,13 @@
                                 <td><div class="table-product"><img src="{{ media_url($item->image) }}" alt=""><span><strong>{{ $item->name }}</strong><small>#{{ $item->id }} · {{ $item->categoryName() }}</small></span></div></td>
                                 <td>{{ $item->brandName() }}</td>
                                 <td><strong>{{ money($item->price) }}</strong></td>
-                                <td><span @class(['stock-low' => $item->stock < 10])>{{ $item->stock }}</span></td>
+                                <td>
+                                    @php $lowThreshold = \App\Services\DashboardService::LOW_STOCK_THRESHOLD; @endphp
+                                    <span @class(['stock-low' => $item->stock <= $lowThreshold, 'stock-out' => $item->stock === 0])>
+                                        {{ $item->stock }}
+                                        @if ($item->stock <= $lowThreshold)<small>{{ $item->stock === 0 ? 'Hết hàng' : 'Sắp hết' }}</small>@endif
+                                    </span>
+                                </td>
                                 <td>{{ $item->sold }}</td>
                                 <td><span class="status-badge {{ $item->status === 'active' ? 'status-completed' : 'status-cancelled' }}">{{ $item->status === 'active' ? 'Đang bán' : 'Ngừng bán' }}</span></td>
                                 <td class="table-actions-cell">
@@ -130,14 +136,24 @@
                                     <div class="admin-image-empty"><x-icon name="image" /><small>Chưa chọn ảnh</small></div>
                                 @endforelse
                             </div>
-                            <div class="admin-image-actions">
-                                <label class="btn btn-light"><x-icon name="upload-cloud" /> Thêm ảnh từ máy
-                                    <input type="file" name="new_images[]" accept=".jpg,.jpeg,.png,.webp,.gif" multiple hidden data-image-input>
-                                </label>
-                                <small data-image-input-label>JPG, PNG, WEBP hoặc GIF · mỗi ảnh tối đa 5MB</small>
+                            <div class="admin-image-new" data-image-new-previews hidden></div>
+                            <div class="admin-image-actions admin-image-dropzone" data-image-drop>
+                                <label class="btn btn-light" for="catalog-new-images"><x-icon name="upload-cloud" /> Tải ảnh lên từ máy tính</label>
+                                <input id="catalog-new-images" type="file" name="new_images[]" accept=".jpg,.jpeg,.png,.webp,.gif,image/jpeg,image/png,image/webp,image/gif" multiple data-image-input>
+                                <small data-image-input-label>Hoặc kéo thả ảnh vào khung này · JPG, PNG, WEBP, GIF · mỗi ảnh tối đa 5MB</small>
+                                <div class="admin-image-url-input">
+                                    <label for="catalog-image-url">Hoặc thêm ảnh bằng URL</label>
+                                    <div>
+                                        <input id="catalog-image-url" type="url" inputmode="url" placeholder="https://cdn.example.com/anh.jpg" data-image-url-draft>
+                                        <button type="button" class="btn btn-light" data-image-url-add><x-icon name="link" /> Thêm URL</button>
+                                    </div>
+                                    <small role="alert" data-image-url-error hidden></small>
+                                </div>
                             </div>
                         </div>
+                        @error('new_images')<small>{{ $message }}</small>@enderror
                         @error('new_images.*')<small>{{ $message }}</small>@enderror
+                        @error('image_urls.*')<small>{{ $message }}</small>@enderror
                     </div>
 
                     <label class="form-field full"><span>Mô tả *</span><textarea name="description" rows="4" required>{{ $value('description') }}</textarea>@error('description')<small>{{ $message }}</small>@enderror</label>

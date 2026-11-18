@@ -18,6 +18,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [AuthenticateSession::class, EnsureAccountIsActive::class]);
         $middleware->alias(['admin' => EnsureUserIsAdmin::class]);
+        // Webhook do máy chủ SePay gọi (không có phiên/CSRF token); được xác thực bằng header Apikey.
+        $middleware->validateCsrfTokens(except: ['payment/sepay/webhook']);
         $middleware->redirectUsersTo(fn (Request $request) => $request->user()?->isAdmin()
             ? route('admin.dashboard')
             : route('home'));
@@ -26,6 +28,6 @@ return Application::configure(basePath: dirname(__DIR__))
         // Lỗi nghiệp vụ (hết hàng, voucher sai...) là tình huống bình thường, không ghi vào log lỗi.
         $exceptions->dontReport(BusinessException::class);
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
+            fn (Request $request) => $request->is('api/*', 'chat/*', 'payment/sepay/*', 'auth/social') || $request->expectsJson(),
         );
     })->create();

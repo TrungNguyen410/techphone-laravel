@@ -37,6 +37,7 @@
                 <button type="button" data-fill-login="0900000000">Quản trị: 0900000000</button>
             </div>
         @endif
+        @include('partials.social-login')
         <p class="auth-switch">Chưa có tài khoản? <a href="{{ route('register') }}">Đăng ký ngay</a></p>
     </form>
 @endsection

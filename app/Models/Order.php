@@ -127,11 +127,19 @@ class Order extends Model
     }
 
     /**
-     * Khách được tự hủy khi đơn chưa giao và chưa thanh toán.
+     * Khách chỉ tự hủy được khi cửa hàng chưa xác nhận đơn và đơn chưa thanh toán.
      */
     public function canBeCancelledByCustomer(): bool
     {
-        return in_array($this->status, ['pending', 'confirmed'], true) && ! $this->isPaymentSettled();
+        return $this->status === 'pending' && ! $this->isPaymentSettled();
+    }
+
+    /** Đơn chuyển khoản còn chờ tiền về: hiển thị mã VietQR với nội dung là mã đơn. */
+    public function awaitsBankTransfer(): bool
+    {
+        return $this->payment_method === 'bank'
+            && $this->status !== 'cancelled'
+            && in_array($this->payment_status, ['pending', 'failed'], true);
     }
 
     public function fullAddress(): string

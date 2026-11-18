@@ -7,9 +7,11 @@ use App\Models\Accessory;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
+use App\Support\ShippingAddress;
 use App\Support\VietnamesePhone;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 class OrderService
 {
@@ -22,10 +24,50 @@ class OrderService
      * Tạo đơn hàng trong một transaction: kiểm tra tồn kho, giữ voucher, trừ kho, sinh mã đơn.
      * Cùng một $checkoutKey gửi lại (bấm 2 lần, F5) sẽ trả về đơn đã tạo thay vì tạo đơn mới.
      *
+     * Đơn đầu tiên tự lưu địa chỉ nhận hàng vào tài khoản; các đơn sau chỉ lưu khi khách chọn
+     * "Lưu làm địa chỉ mặc định" (save_address = true).
+     *
      * @param  array{items: array<int, array{type: string, id: int, quantity: int}>, customer: array<string, string>,
-     *     payment_method?: string, voucher_code?: ?string, note?: ?string}  $data
+     *     payment_method?: string, voucher_code?: ?string, note?: ?string, save_address?: bool}  $data
      */
     public function create(array $data, ?User $user, ?string $checkoutKey = null): Order
+    {
+        $order = $this->placeOrder($data, $user, $checkoutKey);
+        $this->rememberShippingAddress($user, $order, (bool) ($data['save_address'] ?? false));
+
+        return $order;
+    }
+
+    /**
+     * Lưu thông tin người nhận của đơn vào tài khoản để lần sau không phải nhập lại.
+     * Đơn đã tạo xong nên lỗi ở bước tiện ích này không được làm hỏng việc đặt hàng.
+     */
+    public function rememberShippingAddress(?User $user, Order $order, bool $requested): void
+    {
+        if (! $user || (! $requested && $user->savedShippingAddress())) {
+            return;
+        }
+
+        $address = ShippingAddress::from([
+            'full_name' => $order->customer_name,
+            'email' => $order->customer_email,
+            'phone' => $order->customer_phone,
+            'address' => $order->customer_address,
+            'province' => $order->province,
+            'ward' => $order->ward,
+        ]);
+        if (! ShippingAddress::isComplete($address)) {
+            return;
+        }
+
+        try {
+            $user->forceFill(['shipping_address' => $address])->save();
+        } catch (Throwable $exception) {
+            report($exception);
+        }
+    }
+
+    private function placeOrder(array $data, ?User $user, ?string $checkoutKey): Order
     {
         $customer = $this->canonicalCustomer($data['customer']);
         $paymentMethod = $data['payment_method'] ?? 'cod';
@@ -45,13 +87,14 @@ class OrderService
 
                 $subtotal = array_sum(array_map(fn ($item) => $item['price'] * $item['quantity'], $items));
                 $quote = $this->shipping->quote($customer['province'], $subtotal);
-                $voucher = ! empty($data['voucher_code']) ? $this->vouchers->reserve($data['voucher_code'], $subtotal) : null;
+                $voucher = ! empty($data['voucher_code']) ? $this->vouchers->reserve($data['voucher_code'], $subtotal, $user) : null;
                 $discount = $voucher?->discountFor($subtotal, $quote['fee']) ?? 0;
 
                 $this->decrementInventory($items);
+                $orderNumber = $this->nextOrderNumber();
 
                 $order = Order::create([
-                    'order_number' => $this->nextOrderNumber(),
+                    'order_number' => $orderNumber,
                     'idempotency_key' => $idempotencyKey,
                     'request_fingerprint' => $fingerprint,
                     'user_id' => $user?->id,
@@ -63,7 +106,8 @@ class OrderService
                     'payment_method' => $paymentMethod,
                     'payment_status' => 'pending',
                     'shipping_provider' => ShippingService::PROVIDER,
-                    'tracking_number' => 'TPX'.substr((string) now()->getTimestampMs(), -10),
+                    // Lấy từ mã đơn (duy nhất) nên hai đơn tạo cùng lúc không bao giờ trùng mã vận đơn.
+                    'tracking_number' => 'TPX'.substr($orderNumber, 2),
                     'estimated_delivery' => now()->addDays($quote['days']),
                     'customer_name' => $customer['full_name'],
                     'customer_email' => $customer['email'],
@@ -100,7 +144,8 @@ class OrderService
     }
 
     /**
-     * Hủy đơn (khách tự hủy hoặc admin), hoàn tồn kho và trả lượt dùng voucher.
+     * Hủy đơn, hoàn tồn kho và trả lượt dùng voucher.
+     * Khách chỉ tự hủy được khi đơn còn "Chờ xác nhận"; quản trị viên hủy được cả đơn đã xác nhận.
      */
     public function cancel(Order $order, ?User $actor = null): Order
     {
@@ -118,6 +163,9 @@ class OrderService
             }
             if (! in_array($order->status, ['pending', 'confirmed'], true)) {
                 throw new BusinessException('Đơn hàng không còn có thể hủy');
+            }
+            if ($actor && ! $actor->isAdmin() && $order->status !== 'pending') {
+                throw new BusinessException('Đơn hàng đã được cửa hàng xác nhận nên bạn không thể tự hủy. Vui lòng liên hệ cửa hàng để được hỗ trợ.');
             }
 
             $order->update(['status' => 'cancelled']);

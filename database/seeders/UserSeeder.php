@@ -34,5 +34,16 @@ class UserSeeder extends Seeder
                 'phone_verified_at' => now(),
             ]);
         }
+
+        // Khách 0911111111 đã có địa chỉ lưu sẵn: trang thanh toán hiện thẻ địa chỉ, không bắt nhập lại.
+        // Khách 0922222222 chưa có: đơn đầu tiên sẽ tự lưu địa chỉ.
+        User::where('phone', '0911111111')->update(['shipping_address' => json_encode([
+            'full_name' => 'Nguyễn Minh Anh',
+            'email' => 'user@gmail.com',
+            'phone' => '0911111111',
+            'address' => '45 Lê Lợi',
+            'province' => 'TP. Hồ Chí Minh',
+            'ward' => 'Phường Sài Gòn',
+        ], JSON_UNESCAPED_UNICODE)]);
     }
 }

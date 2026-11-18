@@ -44,7 +44,7 @@ class BannerController extends SimpleCrudController
         return [
             'title' => ['required', 'string', 'max:200'],
             'description' => ['required', 'string', 'max:255'],
-            'image_file' => [$item?->image ? 'nullable' : 'required', 'image', 'max:5120'],
+            'image_file' => [$item?->image ? 'nullable' : 'required_without:image_url', 'image', 'max:5120'],
             'link' => ['required', 'string', 'max:255', 'regex:/^(\/|https?:\/\/)/'],
             'position' => ['nullable', 'integer', 'min:0'],
             'active' => ['nullable'],

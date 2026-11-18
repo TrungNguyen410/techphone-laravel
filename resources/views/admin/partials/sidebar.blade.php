@@ -7,6 +7,8 @@
         ['admin.customers.index', 'Khách hàng', 'users', 'admin.customers.*'],
         ['admin.contacts.index', 'Liên hệ hỗ trợ', 'message-square', 'admin.contacts.*'],
         ['admin.reviews.index', 'Đánh giá', 'message-square', 'admin.reviews.*'],
+        ['admin.chatbot.index', 'Chatbot AI', 'cpu', 'admin.chatbot.*'],
+        ['admin.knowledge.index', 'Kho kiến thức', 'book-open', 'admin.knowledge.*'],
         ['admin.banners.index', 'Banner', 'image', 'admin.banners.*'],
         ['admin.vouchers.index', 'Voucher', 'tag', 'admin.vouchers.*'],
         ['admin.categories.index', 'Danh mục', 'layers', 'admin.categories.*'],

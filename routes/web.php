@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\Auth\SocialLoginController;
 use App\Http\Controllers\Shop;
 use Illuminate\Support\Facades\Route;
 
@@ -45,11 +46,23 @@ Route::get('/sitemap.xml', Shop\SitemapController::class)->name('sitemap');
 
 Route::get('/payment/vnpay/return', [Shop\PaymentController::class, 'vnpayReturn'])->name('payments.vnpay.return');
 Route::get('/payment/vnpay/ipn', [Shop\PaymentController::class, 'vnpayIpn'])->name('payments.vnpay.ipn');
+// Webhook SePay (máy chủ SePay gọi khi có tiền chuyển vào tài khoản), không dùng CSRF - xem bootstrap/app.php.
+Route::post('/payment/sepay/webhook', [Shop\PaymentController::class, 'sepayWebhook'])->name('payments.sepay.webhook');
+
+// Chatbot AI tư vấn (khung chat nổi trên mọi trang). Giới hạn 20 tin/phút/IP.
+Route::controller(Shop\ChatController::class)->prefix('chat')->name('chat.')->group(function () {
+    Route::get('/config', 'config')->name('config');
+    Route::post('/messages', 'send')->middleware('throttle:chat')->name('send');
+    Route::post('/messages/stream', 'stream')->middleware('throttle:chat')->name('stream');
+    Route::get('/sessions/{session}', 'session')->whereNumber('session')->name('session');
+    Route::post('/messages/{message}/feedback', 'feedback')->whereNumber('message')->name('feedback');
+});
 
 Route::middleware('auth')->group(function () {
     Route::get('/checkout', [Shop\CheckoutController::class, 'index'])->name('checkout.index');
     Route::post('/checkout', [Shop\CheckoutController::class, 'store'])->name('checkout.store');
     Route::get('/order-success/{order}', [Shop\OrderController::class, 'success'])->name('orders.success');
+    Route::get('/orders/{order}/payment-status', [Shop\PaymentController::class, 'status'])->name('orders.payment-status');
     Route::post('/orders/{order}/cancel', [Shop\OrderController::class, 'cancel'])->name('orders.cancel');
     Route::post('/orders/{order}/reorder', [Shop\OrderController::class, 'reorder'])->name('orders.reorder');
     Route::post('/orders/{order}/pay', [Shop\PaymentController::class, 'retry'])->name('orders.pay');
@@ -58,6 +71,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/account', [Shop\AccountController::class, 'index'])->name('account.index');
     Route::put('/account/profile', [Shop\AccountController::class, 'updateProfile'])->name('account.profile');
+    Route::put('/account/address', [Shop\AccountController::class, 'updateAddress'])->name('account.address');
     Route::put('/account/password', [Shop\AccountController::class, 'updatePassword'])->name('account.password');
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 });
@@ -80,6 +94,9 @@ Route::middleware('guest')->group(function () {
     Route::post('/forgot-password', [PasswordResetController::class, 'requestOtp'])->middleware('throttle:otp-request')->name('password.otp');
     Route::get('/reset-password', [PasswordResetController::class, 'showReset'])->name('password.reset');
     Route::post('/reset-password', [PasswordResetController::class, 'reset'])->middleware('throttle:otp-verify')->name('password.update');
+
+    // Đăng nhập/đăng ký bằng Google hoặc Facebook (Firebase Authentication gửi ID token để máy chủ kiểm tra).
+    Route::post('/auth/social', SocialLoginController::class)->middleware('throttle:login')->name('auth.social');
 });
 
 /*
@@ -108,6 +125,11 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     Route::get('/customers', [Admin\CustomerController::class, 'index'])->name('customers.index');
     Route::patch('/customers/{user}/lock', [Admin\CustomerController::class, 'toggleLock'])->name('customers.lock');
+    Route::post('/customers/{user}/vouchers', [Admin\CustomerController::class, 'giftVoucher'])->name('customers.vouchers.store');
+
+    Route::get('/chatbot', [Admin\ChatbotController::class, 'index'])->name('chatbot.index');
+    Route::put('/chatbot/config', [Admin\ChatbotController::class, 'updateConfig'])->name('chatbot.config');
+    Route::resource('knowledge', Admin\KnowledgeController::class)->only(['index', 'store', 'update', 'destroy']);
 
     Route::get('/contacts', [Admin\ContactController::class, 'index'])->name('contacts.index');
     Route::put('/contacts/{contact}', [Admin\ContactController::class, 'update'])->name('contacts.update');

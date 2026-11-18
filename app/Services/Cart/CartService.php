@@ -112,7 +112,7 @@ class CartService
 
     public function applyVoucher(string $code): Voucher
     {
-        $voucher = $this->vouchers->validate($code, $this->subtotal());
+        $voucher = $this->vouchers->validate($code, $this->subtotal(), auth()->user());
         $this->session->put(self::VOUCHER_KEY, $voucher->code);
 
         return $voucher;
@@ -127,7 +127,10 @@ class CartService
     {
         $code = $this->session->get(self::VOUCHER_KEY);
 
-        return $code ? Voucher::where('code', $code)->where('active', true)->first() : null;
+        $voucher = $code ? Voucher::where('code', $code)->where('active', true)->first() : null;
+
+        // Voucher tặng riêng không còn hiệu lực khi người dùng hiện tại không phải người được tặng (ví dụ đã đăng xuất).
+        return $voucher && (! $voucher->assigned_user_id || $voucher->assigned_user_id === auth()->id()) ? $voucher : null;
     }
 
     /** Giảm giá hiển thị ở giỏ hàng (mã freeship được tính ở bước thanh toán). */

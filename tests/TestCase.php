@@ -67,8 +67,8 @@ abstract class TestCase extends BaseTestCase
             'phone' => '0912345678',
             'address' => '1 Lê Lợi',
             'province' => 'TP. Hồ Chí Minh',
-            'district' => '',
-            'ward' => 'Bến Nghé',
+            // Phường sau sắp xếp đơn vị hành chính 01/07/2025 (không còn quận/huyện).
+            'ward' => 'Phường Sài Gòn',
         ];
     }
 }

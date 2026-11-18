@@ -2,8 +2,11 @@
 
 namespace App\Providers;
 
+use App\Models\Accessory;
 use App\Models\Contact;
+use App\Models\Product;
 use App\Services\Cart\CartService;
+use App\Services\DashboardService;
 use App\Services\SettingService;
 use App\Services\ShopperPreferences;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -46,7 +49,11 @@ class AppServiceProvider extends ServiceProvider
         });
 
         View::composer('admin.partials.header', function ($view) {
-            $view->with('newContacts', Contact::where('status', 'new')->count());
+            $view->with([
+                'newContacts' => Contact::where('status', 'new')->count(),
+                'lowStockCount' => Product::active()->where('stock', '<=', DashboardService::LOW_STOCK_THRESHOLD)->count()
+                    + Accessory::active()->where('stock', '<=', DashboardService::LOW_STOCK_THRESHOLD)->count(),
+            ]);
         });
 
         $this->configureRateLimiting();
@@ -69,6 +76,9 @@ class AppServiceProvider extends ServiceProvider
         ]);
 
         RateLimiter::for('otp-verify', fn (Request $request) => Limit::perMinutes(10, 10)->by('otp-verify:'.$request->ip()));
+
+        // Chatbot: tối đa 20 tin nhắn mỗi phút cho một địa chỉ IP.
+        RateLimiter::for('chat', fn (Request $request) => Limit::perMinute(20)->by('chat-ip:'.$request->ip()));
 
         RateLimiter::for('order-lookup', fn (Request $request) => [
             Limit::perMinute(20)->by('lookup-ip:'.$request->ip()),

@@ -29,6 +29,8 @@ class PaymentService
             'cod' => ['enabled' => true],
             'bank' => [
                 'enabled' => filled($bank['name']) && filled($bank['bin']) && filled($bank['account_number']) && filled($bank['account_name']),
+                // Có khóa webhook SePay thì tiền về được xác nhận tự động, không cần nhân viên đối soát.
+                'autoConfirm' => filled(config('services.sepay.webhook_api_key')),
                 'display' => $bank,
             ],
             'momo' => [

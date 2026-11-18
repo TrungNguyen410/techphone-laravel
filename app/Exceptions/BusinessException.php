@@ -25,7 +25,8 @@ class BusinessException extends RuntimeException
 
     public function render(Request $request): RedirectResponse|JsonResponse
     {
-        if ($request->expectsJson()) {
+        // Khung chat (kể cả endpoint stream), webhook và đăng nhập mạng xã hội luôn nhận lỗi dạng JSON.
+        if ($request->expectsJson() || $request->is('chat/*', 'payment/sepay/*', 'auth/social')) {
             return response()->json(['success' => false, 'message' => $this->getMessage()], $this->status);
         }
 

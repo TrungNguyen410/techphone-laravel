@@ -32,7 +32,7 @@ echo "== Khách vãng lai"
 for p in / /products '/products?brand=Apple&sort=price-asc&battery=5000' '/products?q=galaxy&page=2' /products/1 \
   /accessories '/accessories?category=Tai%20nghe' /accessories/1 /cart /compare /favorites /reviews '/reviews?rating=5' \
   /contact /order-lookup '/order-lookup?order_number=TP260601&phone=0911111111' '/order-lookup?order_number=XX&phone=0911111111' \
-  /policies/warranty /policies/payment /sitemap.xml /login /register /forgot-password '/search/suggest?q=iphone'; do
+  /policies/warranty /policies/payment /sitemap.xml /login /register /forgot-password '/search/suggest?q=iphone' /chat/config   /data/vn-wards.json; do
   check 200 "$p"
 done
 check 404 /khong-ton-tai
@@ -42,12 +42,12 @@ check 302 /admin/dashboard
 
 echo "== Khách hàng 0911111111"
 login 0911111111
-for p in /account '/account?tab=orders' '/account?tab=password' /cart /checkout; do check 200 "$p"; done
+for p in /account '/account?tab=address' '/account?tab=orders' '/account?tab=orders&order=1' '/account?tab=vouchers'   '/account?tab=password' /cart /checkout '/checkout?address=new'; do check 200 "$p"; done
 check 403 /admin/dashboard
 
 echo "== Quản trị 0900000000"
 login 0900000000
-for p in /admin/dashboard '/admin/dashboard?year=2025' /admin/products '/admin/products?create=1' '/admin/products?edit=1' \
+for p in /admin/dashboard '/admin/dashboard?year=2025' '/admin/dashboard?year=2026&month=2' '/admin/dashboard?month=12'   '/admin/dashboard?gift=2' /admin/chatbot '/admin/chatbot?view=1' /admin/knowledge '/admin/knowledge?edit=1' /admin/products '/admin/products?create=1' '/admin/products?edit=1' \
   /admin/accessories '/admin/accessories?edit=1' /admin/orders '/admin/orders?status=pending' '/admin/orders?view=1' \
   /admin/customers /admin/contacts '/admin/contacts?view=1' /admin/reviews /admin/banners '/admin/banners?edit=1' \
   /admin/vouchers '/admin/vouchers?create=1' /admin/categories /admin/brands '/admin/brands?edit=1' /admin/settings; do

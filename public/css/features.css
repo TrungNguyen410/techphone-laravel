@@ -1,0 +1,1326 @@
+/*
+ * Giao diện các chức năng bổ sung: dashboard doanh thu năm/tháng/ngày (wireframe), top khách hàng + tặng voucher,
+ * cảnh báo tồn kho, tải ảnh từ máy tính/kéo thả/URL, địa chỉ đã lưu, voucher của tôi, chuyển khoản theo mã đơn,
+ * đăng nhập Google/Facebook, Chatbot AI.
+ */
+
+/* Menu điều hướng trên điện thoại chỉ hiện khi dialog đang mở (trước đây luôn che nội dung trang). */
+dialog.mobile-drawer:not([open]) {
+  display: none;
+}
+
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: var(--z-critical-modal);
+  padding: 10px 14px;
+  color: var(--color-static-white);
+  border-radius: var(--radius-control);
+  background: var(--color-accent-strong);
+  font-weight: 700;
+  transform: translateY(-200%);
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
+/* ==========================================================================
+   Dashboard
+   ========================================================================== */
+.chart-card canvas {
+  max-height: none;
+}
+
+.low-stock-alert {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 12px 16px;
+  color: var(--color-warning-deep);
+  border: 1px solid var(--color-warning);
+  border-radius: 12px;
+  background: var(--color-warning-frost);
+  font-size: 12px;
+}
+
+.low-stock-alert svg {
+  flex: 0 0 auto;
+  font-size: 18px;
+}
+
+.low-stock-alert span {
+  flex: 1;
+}
+
+.low-stock-alert b {
+  white-space: nowrap;
+  text-decoration: underline;
+}
+
+.revenue-section {
+  margin-bottom: 18px;
+}
+
+.revenue-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  margin-bottom: 12px;
+}
+
+.revenue-filters h2 {
+  margin: 0;
+  color: var(--color-ink-deep);
+  font-size: 17px;
+  font-weight: 850;
+}
+
+.revenue-filters label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-ink-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.revenue-filters select {
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-control);
+  background: var(--color-paper-raised);
+  font-weight: 600;
+}
+
+.revenue-filters small {
+  margin-left: auto;
+  color: var(--color-ink-subtle);
+  font-size: 10px;
+}
+
+.revenue-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.15fr) minmax(0, 1.45fr);
+  gap: 18px;
+}
+
+.revenue-chart .card-heading {
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.revenue-total strong {
+  white-space: nowrap;
+}
+
+.revenue-chart {
+  display: flex;
+  height: auto;
+  min-height: 330px;
+  flex-direction: column;
+}
+
+.revenue-total {
+  display: grid;
+  justify-items: end;
+  text-align: right;
+}
+
+.revenue-total small {
+  color: var(--color-ink-subtle);
+  font-size: 9px;
+}
+
+.revenue-total strong {
+  color: var(--color-ink-deep);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.revenue-canvas {
+  position: relative;
+  height: 220px;
+}
+
+.revenue-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  color: var(--color-ink-subtle);
+  font-size: 11px;
+  pointer-events: none;
+}
+
+.revenue-table {
+  margin-top: 10px;
+  font-size: 11px;
+}
+
+.revenue-table summary {
+  color: var(--color-accent);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.revenue-table table {
+  width: 100%;
+  margin-top: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.revenue-table th,
+.revenue-table td {
+  padding: 5px 4px;
+  border-bottom: 1px dashed var(--color-rule);
+}
+
+.revenue-table td:last-child,
+.revenue-table th:last-child {
+  text-align: right;
+}
+
+.rank-badge {
+  display: inline-grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  color: var(--color-accent-strong);
+  border-radius: 50%;
+  background: var(--color-cobalt-pale);
+  font-size: 11px;
+}
+
+.gift-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  color: var(--color-violet);
+  border: 1px solid var(--color-violet-soft);
+  border-radius: var(--radius-pill);
+  background: var(--color-static-white);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.gift-button:hover {
+  background: var(--color-violet-soft);
+}
+
+.dashboard-empty {
+  margin: 0;
+  padding: 18px 20px;
+  color: var(--color-ink-subtle);
+  font-size: 12px;
+}
+
+.dashboard-side-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.low-stock-card {
+  padding: 20px;
+}
+
+.low-stock-card ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.low-stock-card li {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.low-stock-card li img {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: var(--color-paper);
+  object-fit: contain;
+}
+
+.low-stock-card li a {
+  display: grid;
+  min-width: 0;
+  color: var(--color-ink-deep);
+}
+
+.low-stock-card li a strong {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.low-stock-card li a small {
+  color: var(--color-ink-subtle);
+  font-size: 10px;
+}
+
+.low-stock-count {
+  display: inline-grid;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 6px;
+  place-items: center;
+  color: var(--color-static-white);
+  border-radius: var(--radius-pill);
+  background: var(--color-danger-vivid);
+  font-size: 12px;
+}
+
+.stock-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.stock-pill.is-low {
+  color: var(--color-warning-deep);
+  background: var(--color-warning-pale);
+}
+
+.stock-pill.is-out {
+  color: var(--color-danger-deep);
+  background: var(--color-danger-pale);
+}
+
+.low-stock-more {
+  display: block;
+  margin-top: 10px;
+  color: var(--color-ink-subtle);
+  font-size: 10px;
+}
+
+.stock-low small {
+  display: block;
+  color: var(--color-warning-deep);
+  font-size: 9px;
+  font-weight: 750;
+}
+
+.stock-out small {
+  color: var(--color-danger-deep);
+}
+
+.gift-voucher-modal {
+  width: min(560px, calc(100vw - 32px));
+}
+
+.gift-voucher-modal h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gift-voucher-customer {
+  color: var(--color-ink-muted);
+  font-size: 13px;
+}
+
+.gift-voucher-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 12px 0 0;
+  color: var(--color-ink-muted);
+  font-size: 12px;
+}
+
+.gift-voucher-done {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  text-align: center;
+}
+
+.gift-voucher-done > svg {
+  color: var(--color-success);
+  font-size: 40px;
+}
+
+.gift-voucher-code {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px dashed var(--color-accent);
+  border-radius: 12px;
+  background: var(--color-accent-soft);
+}
+
+.gift-voucher-code strong,
+.voucher-code {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  letter-spacing: 0.06em;
+}
+
+/* ==========================================================================
+   Ảnh trong quản trị: tải từ máy tính, kéo thả, URL
+   ========================================================================== */
+/* Nút chọn "Ảnh đại diện" trong lưới ảnh: không nhận kiểu ô nhập chung của form. */
+.admin-image-grid .image-primary-choice {
+  padding: 6px 8px;
+  color: var(--color-ink-muted);
+  font-size: 10px;
+}
+
+.admin-image-grid .image-primary-choice input[type="radio"] {
+  width: 14px;
+  min-width: 14px;
+  height: 14px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  flex: 0 0 auto;
+  accent-color: var(--color-accent);
+}
+
+.admin-image-new {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(90px, 1fr));
+  gap: 10px;
+}
+
+.admin-image-new[hidden] {
+  display: none;
+}
+
+.admin-image-new article {
+  position: relative;
+  overflow: hidden;
+  border: 1px dashed var(--color-accent);
+  border-radius: 10px;
+  background: var(--color-static-white);
+}
+
+.admin-image-new img {
+  width: 100%;
+  height: 90px;
+  object-fit: contain;
+}
+
+.admin-image-new span {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  padding: 2px 6px;
+  color: var(--color-static-white);
+  border-radius: var(--radius-pill);
+  background: var(--color-success);
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.admin-image-new button {
+  width: 100%;
+  min-height: 28px;
+  color: var(--color-danger-vivid);
+  border-top: 1px solid var(--color-rule);
+  font-size: 9px;
+  font-weight: 750;
+}
+
+[data-image-drop] {
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+[data-image-drop].is-dragging {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+
+.admin-image-dropzone {
+  padding: 12px;
+  border: 1px dashed var(--color-rule-strong);
+  border-radius: 10px;
+  background: var(--color-static-white);
+}
+
+.admin-image-url-input > label {
+  font-size: 11px;
+}
+
+.admin-image-actions .admin-image-url-input input {
+  min-height: 36px;
+  font-size: 12px;
+}
+
+.admin-page-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  color: var(--color-ink-muted);
+  border-radius: 10px;
+  background: var(--color-accent-soft);
+  font-size: 12px;
+}
+
+.table-keywords {
+  display: inline-block;
+  max-width: 260px;
+  overflow: hidden;
+  color: var(--color-ink-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+}
+
+/* ==========================================================================
+   Địa chỉ nhận hàng đã lưu, voucher của tôi, chuyển khoản theo mã đơn
+   ========================================================================== */
+.saved-address-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-surface);
+  background: var(--color-accent-soft);
+}
+
+.saved-address-card > svg {
+  color: var(--color-accent);
+  font-size: 22px;
+}
+
+.saved-address-card div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.saved-address-card small {
+  color: var(--color-accent-strong);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.saved-address-card p {
+  margin: 0;
+  color: var(--color-ink);
+}
+
+.saved-address-card span {
+  color: var(--color-ink-muted);
+  font-size: 13px;
+}
+
+.saved-address-card.compact {
+  grid-template-columns: auto minmax(0, 1fr);
+  margin-bottom: 16px;
+}
+
+.address-switch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  border-radius: var(--radius-control);
+  background: var(--color-paper-sunken);
+  font-size: 13px;
+}
+
+.address-switch a {
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+.save-address-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  color: var(--color-ink);
+  font-size: 14px;
+}
+
+.checkout-note-grid {
+  margin-top: 14px;
+}
+
+.field-hint {
+  color: var(--color-warning-deep) !important;
+}
+
+.account-tab-count {
+  display: inline-grid;
+  min-width: 20px;
+  height: 20px;
+  margin-left: auto;
+  padding: 0 5px;
+  place-items: center;
+  color: var(--color-static-white);
+  border-radius: var(--radius-pill);
+  background: var(--color-violet);
+  font-size: 11px;
+}
+
+.account-address-form .form-grid {
+  margin-bottom: 18px;
+}
+
+.my-vouchers {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.my-vouchers li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  border: 1px dashed var(--color-violet);
+  border-radius: var(--radius-surface);
+  background: var(--color-paper-raised);
+}
+
+.my-vouchers li > svg {
+  color: var(--color-violet);
+  font-size: 26px;
+}
+
+.my-vouchers li p {
+  margin: 2px 0;
+}
+
+.my-vouchers li small {
+  color: var(--color-ink-muted);
+}
+
+.my-vouchers li.is-muted {
+  border-color: var(--color-rule);
+  opacity: 0.7;
+}
+
+.order-cancel-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  color: var(--color-warning-deep);
+  border-radius: var(--radius-control);
+  background: var(--color-warning-frost);
+  font-size: 13px;
+}
+
+.bank-transfer-paid {
+  border-color: var(--color-success);
+  background: var(--color-success-frost);
+}
+
+.bank-transfer-paid h2 {
+  color: var(--color-success-deep);
+}
+
+.copy-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 3px 8px;
+  color: var(--color-accent);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-pill);
+  background: var(--color-paper-raised);
+  font-size: 12px;
+}
+
+.spin {
+  animation: tp-spin 1.2s linear infinite;
+  vertical-align: -2px;
+}
+
+@keyframes tp-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ==========================================================================
+   Đăng nhập Google / Facebook
+   ========================================================================== */
+.social-login {
+  display: grid;
+  gap: 12px;
+  margin: 6px 0 4px;
+}
+
+.social-login-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--color-ink-subtle);
+  font-size: 13px;
+}
+
+.social-login-divider::before,
+.social-login-divider::after {
+  height: 1px;
+  flex: 1;
+  background: var(--color-rule);
+  content: "";
+}
+
+.social-login-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.social-login-button {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--color-ink);
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-control);
+  background: var(--color-paper-raised);
+  font-weight: 700;
+}
+
+.social-login-button svg {
+  font-size: 20px;
+}
+
+.social-login-button:hover:not(:disabled) {
+  border-color: var(--color-accent);
+}
+
+.social-login-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.social-login-note {
+  color: var(--color-ink-subtle);
+  font-size: 12px;
+}
+
+/* ==========================================================================
+   Chatbot AI: khung chat nổi (góc trái dưới; nút hỗ trợ giữ góc phải)
+   ========================================================================== */
+.chat-widget {
+  position: fixed;
+  inset-inline-start: max(var(--space-md), env(safe-area-inset-left));
+  inset-block-end: max(var(--space-md), env(safe-area-inset-bottom));
+  z-index: var(--z-sticky);
+  display: grid;
+  justify-items: start;
+  gap: var(--space-xs);
+}
+
+.chat-toggle {
+  display: flex;
+  align-items: center;
+  min-height: 2.75rem;
+  gap: var(--space-xs);
+  padding: 0 var(--space-md) 0 6px;
+  color: var(--color-static-white);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(135deg, var(--color-accent), var(--color-cyan));
+  box-shadow: 0 8px 24px var(--color-overlay-accent-26);
+  font-weight: 700;
+}
+
+.chat-toggle-robot {
+  width: 34px;
+  height: 34px;
+}
+
+.chat-toggle [data-chat-toggle-close] {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  font-size: 18px;
+}
+
+.chat-toggle [hidden] {
+  display: none !important;
+}
+
+.chat-panel {
+  display: flex;
+  width: min(390px, calc(100vw - 2 * var(--space-md)));
+  height: min(600px, calc(100dvh - 7rem));
+  overflow: hidden;
+  flex-direction: column;
+  background: var(--color-paper-raised);
+  box-shadow: 0 24px 60px var(--color-overlay-ink-25);
+}
+
+.chat-panel[hidden] {
+  display: none;
+}
+
+.chat-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 12px 12px 14px;
+  color: var(--color-static-white);
+  background: linear-gradient(135deg, var(--color-graphite-blue), var(--color-accent-strong));
+}
+
+.chat-header > div {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-header strong {
+  font-size: 15px;
+}
+
+.chat-header small {
+  opacity: 0.8;
+  font-size: 12px;
+}
+
+.chat-header button {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  color: inherit;
+  border: 0;
+  border-radius: 50%;
+  background: var(--color-overlay-white-12);
+}
+
+.chat-header button:hover {
+  background: var(--color-overlay-white-24);
+}
+
+.chat-avatar {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--color-overlay-white-16);
+}
+
+.chat-avatar svg {
+  width: 32px;
+  height: 32px;
+}
+
+.chat-messages {
+  display: flex;
+  flex: 1;
+  overflow-y: auto;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  background: var(--color-paper);
+  overscroll-behavior: contain;
+}
+
+.chat-hero {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 6px 0 4px;
+  text-align: center;
+}
+
+.chat-hero-robot svg {
+  width: 72px;
+  height: 72px;
+}
+
+.chat-hero small {
+  color: var(--color-success);
+  font-size: 12px;
+}
+
+.chat-message {
+  display: grid;
+  max-width: 88%;
+  gap: 6px;
+}
+
+.chat-message.user {
+  align-self: flex-end;
+  justify-items: end;
+}
+
+.chat-message.assistant.with-avatar {
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: start;
+}
+
+.chat-message.assistant.with-avatar > :not(.chat-message-avatar) {
+  grid-column: 2;
+}
+
+.chat-message-avatar svg {
+  width: 28px;
+  height: 28px;
+}
+
+.chat-bubble {
+  padding: 10px 12px;
+  color: var(--color-ink);
+  border-radius: 14px;
+  background: var(--color-paper-raised);
+  box-shadow: var(--shadow-whisper);
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.chat-message.user .chat-bubble {
+  color: var(--color-static-white);
+  border-bottom-right-radius: 4px;
+  background: var(--color-accent);
+  white-space: pre-wrap;
+}
+
+.chat-message.assistant .chat-bubble {
+  border: 1px solid var(--color-rule);
+  border-bottom-left-radius: 4px;
+}
+
+.chat-message.error .chat-bubble {
+  color: var(--color-danger-deep);
+  border-color: var(--color-danger-pale);
+  background: var(--color-danger-frost);
+}
+
+.chat-rich-text p,
+.chat-rich-text ul {
+  margin: 0;
+}
+
+.chat-rich-text > * + * {
+  margin-top: 6px;
+}
+
+.chat-rich-text ul {
+  padding-left: 18px;
+}
+
+.chat-products {
+  display: grid;
+  gap: 6px;
+}
+
+.chat-product-card {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--color-rule);
+  border-radius: 12px;
+  background: var(--color-paper-raised);
+}
+
+.chat-product-card img {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: contain;
+}
+
+.chat-product-card > div {
+  display: grid;
+  min-width: 0;
+}
+
+.chat-product-card a {
+  overflow: hidden;
+  color: var(--color-ink);
+  font-size: 13px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-product-card strong {
+  color: var(--color-danger);
+  font-size: 13px;
+}
+
+.chat-product-card del {
+  color: var(--color-ink-subtle);
+  font-size: 11px;
+}
+
+.chat-product-card form {
+  margin: 0;
+}
+
+.chat-product-card button {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  color: var(--color-accent);
+  border: 1px solid var(--color-rule);
+  border-radius: 50%;
+  background: var(--color-paper);
+}
+
+.chat-product-card button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.chat-feedback {
+  display: flex;
+  gap: 4px;
+}
+
+.chat-feedback button {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  color: var(--color-ink-subtle);
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.chat-feedback button:hover,
+.chat-feedback button[aria-pressed="true"] {
+  color: var(--color-accent);
+  border-color: var(--color-rule);
+  background: var(--color-paper-raised);
+}
+
+.chat-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chat-quick button {
+  padding: 7px 11px;
+  color: var(--color-accent-strong);
+  border: 1px solid var(--color-cobalt-rule);
+  border-radius: var(--radius-pill);
+  background: var(--color-paper-raised);
+  font-size: 13px;
+  text-align: left;
+}
+
+.chat-quick button:hover {
+  background: var(--color-accent-soft);
+}
+
+.chat-typing {
+  display: flex;
+  gap: 4px;
+  width: fit-content;
+}
+
+.chat-typing span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-ink-subtle);
+  animation: chat-dot 1.1s ease-in-out infinite;
+}
+
+.chat-typing span:nth-child(2) { animation-delay: 0.15s; }
+.chat-typing span:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes chat-dot {
+  0%, 80%, 100% { opacity: 0.35; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-3px); }
+}
+
+.chat-input {
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+  border-top: 1px solid var(--color-rule);
+  background: var(--color-paper-raised);
+}
+
+.chat-input input {
+  min-width: 0;
+  min-height: 42px;
+  flex: 1;
+  padding: 0 14px;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-pill);
+  background: var(--color-paper);
+}
+
+.chat-input button {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  color: var(--color-static-white);
+  border: 0;
+  border-radius: 50%;
+  background: var(--color-accent);
+}
+
+.chat-input button:disabled {
+  opacity: 0.45;
+}
+
+.robot-mascot .robot-eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: robot-blink 4.5s infinite;
+}
+
+.robot-mascot .robot-antenna {
+  animation: robot-pulse 2.4s ease-in-out infinite;
+}
+
+.robot-mascot.is-thinking .robot-eyes {
+  animation: robot-look 1.2s ease-in-out infinite;
+}
+
+.robot-mascot.is-floating {
+  animation: robot-float 3.2s ease-in-out infinite;
+}
+
+@keyframes robot-blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.1); }
+}
+
+@keyframes robot-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+@keyframes robot-look {
+  0%, 100% { transform: translateX(0); }
+  30% { transform: translateX(-2px); }
+  70% { transform: translateX(2px); }
+}
+
+@keyframes robot-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .robot-mascot,
+  .robot-mascot *,
+  .chat-typing span,
+  .spin {
+    animation: none !important;
+  }
+}
+
+/* Trang quản trị chatbot */
+.chatbot-status {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+  padding: 14px 18px;
+  border: 1px solid var(--color-rule-cool);
+  border-radius: 13px;
+  background: var(--color-static-white);
+}
+
+.chatbot-status > svg {
+  flex: 0 0 auto;
+  font-size: 26px;
+}
+
+.chatbot-status > div {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+}
+
+.chatbot-status span {
+  color: var(--color-ink-muted);
+  font-size: 12px;
+}
+
+.chatbot-status.is-on {
+  border-color: var(--color-success-rule);
+  background: var(--color-success-frost);
+}
+
+.chatbot-status.is-on > svg {
+  color: var(--color-success-vivid);
+}
+
+.chatbot-status.is-off {
+  border-color: var(--color-warning);
+  background: var(--color-warning-frost);
+}
+
+.chatbot-status.is-off > svg {
+  color: var(--color-warning-deep);
+}
+
+.chatbot-config {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 20px;
+}
+
+.chatbot-config-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.chatbot-config-actions small {
+  color: var(--color-ink-subtle);
+}
+
+.chatbot-insights {
+  margin-bottom: 18px;
+}
+
+.chatbot-tools,
+.chatbot-questions {
+  padding: 20px;
+}
+
+.chatbot-tools > div:not(.card-heading),
+.chatbot-questions > div:not(.card-heading) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--color-rule-muted);
+  font-size: 13px;
+}
+
+.chatbot-questions a {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chatbot-questions small {
+  flex: 0 0 auto;
+  color: var(--color-ink-subtle);
+}
+
+.chat-transcript-modal {
+  width: min(720px, calc(100vw - 32px));
+}
+
+.chat-transcript {
+  display: flex;
+  max-height: 60vh;
+  overflow-y: auto;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--color-paper);
+}
+
+.chat-meta {
+  color: var(--color-ink-subtle);
+  font-size: 11px;
+}
+
+@media (max-width: 1199px) {
+  .revenue-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .revenue-grid > :last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 767px) {
+  .revenue-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .revenue-filters small {
+    margin-left: 0;
+  }
+
+  .saved-address-card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .saved-address-card > .btn {
+    grid-column: 1 / -1;
+  }
+
+  .my-vouchers li {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .my-vouchers li > .status-badge,
+  .my-vouchers li > .btn {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .admin-image-new {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .chat-widget.is-open {
+    inset-inline: var(--space-xs);
+  }
+
+  .chat-widget.is-open .chat-panel {
+    width: 100%;
+    height: calc(100dvh - 6rem);
+  }
+
+  .chat-toggle [data-chat-toggle-label] {
+    display: none;
+  }
+
+  .chat-toggle {
+    padding: 0 6px;
+  }
+}

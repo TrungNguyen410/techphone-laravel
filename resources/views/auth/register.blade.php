@@ -35,6 +35,7 @@
             </label>
         </div>
         <button class="btn btn-primary auth-submit">Gửi mã xác minh</button>
+        @include('partials.social-login')
         <p class="auth-switch">Đã có tài khoản? <a href="{{ route('login') }}">Đăng nhập</a></p>
     </form>
 @endsection

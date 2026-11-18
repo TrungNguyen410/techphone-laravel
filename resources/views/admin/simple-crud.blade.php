@@ -12,6 +12,9 @@
         <div></div>
         <a class="btn btn-primary" href="{{ route('admin.'.$resource.'.index', ['create' => 1]) }}"><x-icon name="plus" /> Thêm {{ mb_strtolower($meta['singular']) }}</a>
     </div>
+    @if (! empty($meta['note']))
+        <p class="admin-page-note"><x-icon name="book-open" /> {{ $meta['note'] }}</p>
+    @endif
 
     <div class="admin-table-card">
         <div class="admin-table-title"><div><h2>{{ $meta['title'] }}</h2><span>{{ $items->count() }} mục</span></div></div>
@@ -79,28 +82,12 @@
                                 </label>
                                 @break
                             @case('image')
-                                <div class="form-field full admin-image-field">
-                                    <span>{{ $field['label'] }}{{ ! empty($field['required']) ? ' *' : '' }}</span>
-                                    <div @class(['admin-image-upload', 'has-image' => $item?->{$key}])>
-                                        <div class="admin-image-preview" data-single-image-preview>
-                                            @if ($item?->{$key})
-                                                <img src="{{ media_url($item->{$key}) }}" alt="Xem trước {{ mb_strtolower($field['label']) }}">
-                                            @else
-                                                <div><x-icon name="image" /><small>Chưa chọn ảnh</small></div>
-                                            @endif
-                                        </div>
-                                        <div class="admin-image-actions">
-                                            <label class="btn btn-light"><x-icon name="upload-cloud" /> {{ $item?->{$key} ? 'Chọn ảnh khác' : 'Chọn ảnh từ máy' }}
-                                                <input type="file" name="{{ $key }}_file" accept=".jpg,.jpeg,.png,.webp,.gif" hidden data-single-image-input>
-                                            </label>
-                                            @if ($item?->{$key} && empty($field['required']))
-                                                <label class="admin-image-remove"><input type="checkbox" name="{{ $key }}_remove" value="1"> Xóa ảnh</label>
-                                            @endif
-                                            <small>JPG, PNG, WEBP hoặc GIF · tối đa 5MB</small>
-                                        </div>
-                                    </div>
-                                    @error($key.'_file')<small>{{ $message }}</small>@enderror
-                                </div>
+                                @include('partials.admin-image-input', [
+                                    'name' => $key,
+                                    'label' => $field['label'],
+                                    'current' => $item?->{$key},
+                                    'required' => ! empty($field['required']),
+                                ])
                                 @break
                             @default
                                 <label @class(['form-field', 'full' => ! empty($field['full'])])>

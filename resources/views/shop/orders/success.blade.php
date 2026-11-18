@@ -30,6 +30,7 @@
                 </div>
                 @include('partials.order-shipping-note', ['order' => $order])
                 <div class="success-total"><span>Tổng thanh toán</span><strong>{{ money($order->total) }}</strong></div>
+                @include('partials.bank-transfer-panel', ['order' => $order])
                 <div class="success-actions">
                     <a class="btn btn-light" href="{{ route('home') }}"><x-icon name="home" /> Về trang chủ</a>
                     <a class="btn btn-primary" href="{{ route('orders.lookup', ['order_number' => $order->order_number, 'phone' => $order->customer_phone]) }}"><x-icon name="package" /> Tra cứu đơn</a>

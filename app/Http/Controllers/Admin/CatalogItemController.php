@@ -104,10 +104,15 @@ abstract class CatalogItemController extends Controller
             'primary_image' => ['nullable', 'string'],
             'new_images' => ['nullable', 'array', 'max:5'],
             'new_images.*' => ImageUploader::RULES,
+            'image_urls' => ['nullable', 'array', 'max:5'],
+            'image_urls.*' => ['url:http,https', 'max:500'],
         ], [
             'required' => 'Vui lòng nhập :attribute',
+            'new_images.max' => 'Mỗi sản phẩm tối đa 5 ảnh',
             'new_images.*.image' => 'File tải lên phải là ảnh',
+            'new_images.*.mimes' => 'Chỉ hỗ trợ ảnh JPG, PNG, WEBP hoặc GIF',
             'new_images.*.max' => 'Mỗi ảnh tối đa 5MB',
+            'image_urls.*.url' => 'URL ảnh không hợp lệ (cần bắt đầu bằng http:// hoặc https://)',
         ], [
             'name' => 'tên', 'brand_id' => 'thương hiệu', 'category_id' => 'danh mục', 'price' => 'giá bán',
             'stock' => 'tồn kho', 'description' => 'mô tả',
@@ -153,7 +158,7 @@ abstract class CatalogItemController extends Controller
     }
 
     /**
-     * Ghép ảnh giữ lại + ảnh mới tải lên (tối đa 5), đưa ảnh đại diện lên đầu.
+     * Ghép ảnh giữ lại + ảnh mới tải lên từ máy tính + ảnh thêm bằng URL (tối đa 5), đưa ảnh đại diện lên đầu.
      *
      * @return array<int, string>
      */
@@ -161,8 +166,11 @@ abstract class CatalogItemController extends Controller
     {
         $existing = $item?->galleryImages() ?? [];
         $kept = array_values(array_intersect($existing, (array) $request->input('keep_images', [])));
-        $uploaded = $this->uploader->storeMany($request->file('new_images'), $this->kind() === 'product' ? 'products' : 'accessories');
-        $images = array_slice(array_values(array_unique([...$kept, ...$uploaded])), 0, 5);
+        $urls = array_values(array_filter(array_map(fn ($url) => trim((string) $url), (array) $request->input('image_urls', []))));
+        $room = max(0, 5 - count($kept) - count($urls));
+        $files = array_slice($request->file('new_images') ?? [], 0, $room);
+        $uploaded = $this->uploader->storeMany($files, $this->kind() === 'product' ? 'products' : 'accessories');
+        $images = array_slice(array_values(array_unique([...$kept, ...$urls, ...$uploaded])), 0, 5);
 
         $primary = $request->input('primary_image');
         if ($primary && in_array($primary, $images, true)) {

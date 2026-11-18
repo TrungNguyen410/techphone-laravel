@@ -7,6 +7,8 @@
         'admin.customers.index' => 'Quản lý khách hàng',
         'admin.contacts.index' => 'Quản lý liên hệ hỗ trợ',
         'admin.reviews.index' => 'Quản lý đánh giá',
+        'admin.chatbot.index' => 'Chatbot AI tư vấn',
+        'admin.knowledge.index' => 'Kho kiến thức chatbot',
         'admin.banners.index' => 'Quản lý banner',
         'admin.vouchers.index' => 'Quản lý voucher',
         'admin.categories.index' => 'Quản lý danh mục',
@@ -18,7 +20,7 @@
         $newContacts ? [$newContacts.' yêu cầu liên hệ mới cần xử lý', route('admin.contacts.index', ['status' => 'new'])] : null,
         ['Kiểm tra các đơn hàng đang chờ xác nhận', route('admin.orders.index', ['status' => 'pending'])],
         ['Duyệt các đánh giá mới từ khách hàng', route('admin.reviews.index', ['status' => 'pending'])],
-        ['Theo dõi sản phẩm có tồn kho thấp', route('admin.products.index')],
+        $lowStockCount ? [$lowStockCount.' mặt hàng sắp hết hàng (còn ≤ '.\App\Services\DashboardService::LOW_STOCK_THRESHOLD.')', route('admin.dashboard').'#low-stock'] : null,
     ]);
     $admin = auth()->user();
 @endphp

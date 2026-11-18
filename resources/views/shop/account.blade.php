@@ -8,10 +8,20 @@
             <div class="page-title-row"><div><span class="eyebrow">Khu vực thành viên</span><h1>Tài khoản của tôi</h1></div></div>
             <div class="account-layout">
                 <aside class="account-sidebar panel">
-                    <div class="account-user"><div>{{ mb_substr($user->full_name ?: $user->phone, 0, 1) }}</div><span><strong>{{ $user->full_name }}</strong><small>{{ $user->phone }}</small></span></div>
-                    <a href="{{ route('account.index', ['tab' => 'profile']) }}" @class(['account-tab', 'active' => $tab === 'profile'])><x-icon name="user" /> Thông tin cá nhân</a>
-                    <a href="{{ route('account.index', ['tab' => 'orders']) }}" @class(['account-tab', 'active' => $tab === 'orders'])><x-icon name="package" /> Đơn hàng của tôi</a>
-                    <a href="{{ route('account.index', ['tab' => 'password']) }}" @class(['account-tab', 'active' => $tab === 'password'])><x-icon name="lock" /> Đổi mật khẩu</a>
+                    <div class="account-user"><div>{{ mb_substr($user->full_name ?: ($user->phone ?: $user->email), 0, 1) }}</div><span><strong>{{ $user->full_name }}</strong><small>{{ $user->phone ?: $user->email }}</small></span></div>
+                    @foreach ([
+                        'profile' => ['user', 'Thông tin cá nhân'],
+                        'address' => ['map-pin', 'Địa chỉ nhận hàng'],
+                        'orders' => ['package', 'Đơn hàng của tôi'],
+                        'vouchers' => ['gift', 'Voucher của tôi'],
+                        'password' => ['lock', 'Đổi mật khẩu'],
+                    ] as $key => [$icon, $label])
+                        @continue(! in_array($key, $tabs, true))
+                        <a href="{{ route('account.index', ['tab' => $key]) }}" @class(['account-tab', 'active' => $tab === $key])>
+                            <x-icon :name="$icon" /> {{ $label }}
+                            @if ($key === 'vouchers' && $giftCount)<b class="account-tab-count">{{ $giftCount }}</b>@endif
+                        </a>
+                    @endforeach
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
                         <button class="logout"><x-icon name="log-out" /> Đăng xuất</button>
@@ -29,18 +39,68 @@
                                     <input name="full_name" value="{{ old('full_name', $user->full_name) }}" @error('full_name') aria-invalid="true" @enderror>
                                     @error('full_name')<small>{{ $message }}</small>@enderror
                                 </label>
-                                <label class="form-field"><span>Số điện thoại đăng nhập</span><input value="{{ $user->phone }}" readonly><small>Đã xác minh qua SMS</small></label>
+                                @if ($user->isSocialAccount())
+                                    <label class="form-field"><span>Đăng nhập bằng</span><input value="{{ $user->authProviderLabel() }}{{ $user->email ? ' · '.$user->email : '' }}" readonly><small>Số điện thoại người nhận được nhập khi đặt hàng</small></label>
+                                @else
+                                    <label class="form-field"><span>Số điện thoại đăng nhập</span><input value="{{ $user->phone }}" readonly><small>Đã xác minh qua SMS</small></label>
+                                @endif
                                 <label class="form-field full"><span>Địa chỉ</span><textarea name="address" rows="3">{{ old('address', $user->address) }}</textarea></label>
                             </div>
                             <button class="btn btn-primary">Lưu thay đổi</button>
                         </form>
+                    @elseif ($tab === 'address')
+                        <form method="POST" action="{{ route('account.address') }}" class="account-address-form">
+                            @csrf @method('PUT')
+                            <div class="content-heading">
+                                <h2>Địa chỉ nhận hàng</h2>
+                                <p>Được điền sẵn khi đặt hàng để bạn không phải nhập lại. Đơn đầu tiên sẽ tự lưu địa chỉ giao hàng.</p>
+                            </div>
+                            @if ($user->savedShippingAddress())
+                                <div class="saved-address-card compact">
+                                    <x-icon name="map-pin" />
+                                    <div>
+                                        <small>Địa chỉ mặc định hiện tại</small>
+                                        <strong>{{ $addressValues['full_name'] }} · {{ $addressValues['phone'] }}</strong>
+                                        <p>{{ \App\Support\ShippingAddress::format($addressValues) }}</p>
+                                    </div>
+                                </div>
+                            @endif
+                            @include('partials.shipping-address-fields', ['values' => $addressValues, 'prefix' => 'account-address', 'provinces' => $provinces])
+                            <button class="btn btn-primary"><x-icon name="save" /> Lưu địa chỉ</button>
+                        </form>
+                    @elseif ($tab === 'vouchers')
+                        <div class="content-heading"><h2>Voucher của tôi</h2><p>Ưu đãi riêng cửa hàng tặng cho bạn. Mỗi mã dùng một lần, nhập ở bước giỏ hàng.</p></div>
+                        @if ($vouchers->isEmpty())
+                            @include('partials.empty-state', ['title' => 'Bạn chưa có voucher riêng', 'description' => 'Cửa hàng sẽ gửi voucher tri ân vào đây cho khách hàng thân thiết.', 'actionLabel' => 'Mua sắm ngay', 'actionUrl' => route('products.index')])
+                        @else
+                            <ul class="my-vouchers">
+                                @foreach ($vouchers as $voucher)
+                                    @php
+                                        $status = $voucher->ownerStatus();
+                                        $meta = \App\Models\Voucher::OWNER_STATUSES[$status];
+                                    @endphp
+                                    <li @class(['is-muted' => $status !== 'available'])>
+                                        <x-icon name="gift" />
+                                        <div>
+                                            <strong class="voucher-code">{{ $voucher->code }}</strong>
+                                            <p>{{ $voucher->describe() }}</p>
+                                            <small>{{ $voucher->note ? $voucher->note.' · ' : '' }}Hạn dùng đến {{ format_date($voucher->end_date) }}</small>
+                                        </div>
+                                        <span class="status-badge {{ $meta['class'] }}">{{ $meta['label'] }}</span>
+                                        @if ($status === 'available')
+                                            <button type="button" class="btn btn-light" data-copy="{{ $voucher->code }}" data-copy-message="Đã sao chép mã {{ $voucher->code }}, dán vào ô mã giảm giá ở giỏ hàng"><x-icon name="copy" /> Sao chép mã</button>
+                                        @endif
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
                     @elseif ($tab === 'orders')
                         <div class="content-heading"><h2>Đơn hàng của tôi</h2><p>Theo dõi trạng thái và xem lại lịch sử mua sắm.</p></div>
                         <section class="account-order-lookup">
                             <div class="content-heading"><h3>Tra cứu đơn hàng khác</h3><p>Nhập mã đơn và số điện thoại dùng khi đặt hàng.</p></div>
                             <form class="lookup-form panel" method="GET" action="{{ route('orders.lookup') }}">
                                 <label><span>Mã đơn hàng</span><input name="order_number" placeholder="Ví dụ: TP260601" data-uppercase required></label>
-                                <label><span>Số điện thoại</span><input name="phone" value="{{ $user->phone }}" required></label>
+                                <label><span>Số điện thoại</span><input name="phone" value="{{ $user->phone ?: ($user->shipping_address['phone'] ?? '') }}" required></label>
                                 <button class="btn btn-primary"><x-icon name="search" /> Tra cứu</button>
                             </form>
                         </section>
@@ -76,6 +136,9 @@
                                                     @csrf
                                                     <button><x-icon name="credit-card" /> Thanh toán</button>
                                                 </form>
+                                            @endif
+                                            @if ($order->awaitsBankTransfer())
+                                                <a href="{{ route('account.index', ['tab' => 'orders', 'order' => $order->id]) }}"><x-icon name="credit-card" /> Mã QR chuyển khoản</a>
                                             @endif
                                             @if ($order->canBeCancelledByCustomer())
                                                 <form method="POST" action="{{ route('orders.cancel', $order) }}" class="inline-form"
@@ -125,6 +188,12 @@
                 </div>
                 @include('partials.order-shipping-note', ['order' => $selectedOrder])
                 <div class="success-total"><span>Tổng thanh toán</span><strong>{{ money($selectedOrder->total) }}</strong></div>
+                @if ($selectedOrder->awaitsBankTransfer())
+                    @include('partials.bank-transfer-panel', ['order' => $selectedOrder])
+                @endif
+                @if ($selectedOrder->status === 'confirmed' && ! $selectedOrder->isPaymentSettled())
+                    <p class="order-cancel-note"><x-icon name="alert-circle" /> Đơn đã được cửa hàng xác nhận nên không thể tự hủy. Vui lòng liên hệ hotline {{ $store['hotline'] }} nếu cần hỗ trợ.</p>
+                @endif
             </dialog>
         @endif
     </main>

@@ -58,7 +58,40 @@ class OrderSeeder extends Seeder
         ];
         foreach ($history as $index => [$month, $user, $items]) {
             $date = Carbon::create($year, min($month, now()->month), 10 + $index)->setTime(10, 30);
+            if ($date->isFuture()) {
+                $date = now()->subDays($index + 1)->setTime(10, 30);
+            }
             $this->createOrder('TP'.$date->format('ymd').str_pad((string) ($index + 1), 4, '0', STR_PAD_LEFT), $user, 'completed', 'cod', $items, $date);
+        }
+
+        // Doanh thu các năm trước (biểu đồ theo năm) và các ngày đầu tháng hiện tại (biểu đồ theo ngày).
+        $sequence = 100;
+        $customers = [$minhAnh, $hoangNam, $lan, $huy];
+        $catalog = [
+            [['product', 'Galaxy S25', 1]], [['product', 'Redmi Note 14', 1], ['accessory', 'Sạc nhanh GaN 65W', 1]],
+            [['product', 'iPhone 16 Pro', 1]], [['accessory', 'AirPods Pro 2 USB-C', 1]], [['product', 'OPPO Reno13 Pro', 1]],
+            [['product', 'Xiaomi 14T Pro', 1]], [['accessory', 'Galaxy Buds3 Pro', 1]], [['product', 'vivo V50', 1]],
+        ];
+        foreach (range(1, 4) as $yearsAgo) {
+            foreach ([2, 5, 8, 11] as $slot => $month) {
+                if ($slot >= 5 - $yearsAgo) {
+                    continue; // càng xa càng ít đơn để biểu đồ năm có xu hướng tăng
+                }
+                $date = Carbon::create($year - $yearsAgo, $month, 6 + $slot * 5)->setTime(15, 0);
+                $this->createOrder('TP'.$date->format('ymd').str_pad((string) $sequence++, 4, '0', STR_PAD_LEFT),
+                    $customers[($yearsAgo + $slot) % 4], 'completed', 'cod', $catalog[($yearsAgo * 3 + $slot) % count($catalog)], $date);
+            }
+        }
+        foreach (range(1, max(1, now()->day - 1)) as $day) {
+            if ($day % 2 === 0 && $day !== now()->day - 1) {
+                continue;
+            }
+            $date = now()->startOfMonth()->addDays($day - 1)->setTime(11, 15);
+            if ($date->isFuture()) {
+                continue;
+            }
+            $this->createOrder('TP'.$date->format('ymd').str_pad((string) $sequence++, 4, '0', STR_PAD_LEFT),
+                $customers[$day % 4], $day % 3 === 0 ? 'delivered' : 'completed', 'cod', $catalog[$day % count($catalog)], $date);
         }
 
         $this->seedReviews($minhAnh, $hoangNam, $lan);
@@ -106,14 +139,14 @@ class OrderSeeder extends Seeder
             'payment_method' => $method,
             'payment_status' => $paymentStatus ?? (in_array($status, ['delivered', 'completed'], true) ? 'paid' : 'pending'),
             'shipping_provider' => 'TechPhone Express',
-            'tracking_number' => 'TPX'.substr(md5($number), 0, 10),
+            'tracking_number' => 'TPX'.substr($number, 2),
             'estimated_delivery' => $createdAt->copy()->addDays(2),
             'customer_name' => $user->full_name,
             'customer_email' => $user->email,
             'customer_phone' => $user->phone,
             'customer_address' => $user->address,
             'province' => $province,
-            'ward' => 'Phường trung tâm',
+            'ward' => ['Hà Nội' => 'Phường Cầu Giấy', 'Đà Nẵng' => 'Phường Hải Châu'][$province] ?? 'Phường Sài Gòn',
             'note' => $note,
             'voucher_code' => $voucher,
             'voucher_usage_released' => $status === 'cancelled',
