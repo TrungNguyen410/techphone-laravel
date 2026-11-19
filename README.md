@@ -110,6 +110,13 @@ curl -X POST http://localhost:8000/payment/sepay/webhook -H "Authorization: Apik
 - Bảo mật: CSRF, mật khẩu bcrypt, OTP lưu dạng băm (hết hạn sau 10 phút, sai tối đa 5 lần), giới hạn tần suất đăng nhập/gửi OTP/tra cứu,
   tài khoản bị khóa bị đăng xuất ngay, đổi/đặt lại mật khẩu sẽ đăng xuất các phiên khác.
 
+## Sơ đồ thiết kế
+
+Toàn bộ sơ đồ (kiến trúc, use case, ERD, activity, state, sequence) nằm trong [`docs/diagrams/`](docs/diagrams/README.md),
+mỗi sơ đồ có tệp `.drawio` để sửa và ảnh `.drawio.png` để chèn báo cáo.
+
+![Kiến trúc hệ thống](docs/diagrams/kien-truc-he-thong.drawio.png)
+
 ## Cấu trúc mã nguồn
 
 ```
