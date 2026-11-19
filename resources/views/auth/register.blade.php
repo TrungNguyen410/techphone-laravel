@@ -8,14 +8,14 @@
 @endsection
 
 @section('content')
-    <form class="auth-form" method="POST" action="{{ route('register.otp') }}">
+    <form class="auth-form" method="POST" action="{{ route('register.store') }}">
         @csrf
         <span class="eyebrow">Tạo tài khoản mới</span>
         <h1>Đăng ký thành viên</h1>
-        <p>Mã xác minh sẽ được gửi qua SMS đến số điện thoại của bạn.</p>
+        <p>Dùng số điện thoại và mật khẩu để đăng nhập ngay sau khi đăng ký.</p>
         <label class="input-with-icon">
             <span>Họ và tên</span>
-            <div><x-icon name="user-plus" /><input name="full_name" value="{{ old('full_name') }}" required></div>
+            <div><x-icon name="user-plus" /><input name="full_name" value="{{ old('full_name') }}" maxlength="100" autocomplete="name" required></div>
             @error('full_name')<small>{{ $message }}</small>@enderror
         </label>
         <label class="input-with-icon">
@@ -34,7 +34,7 @@
                 <div><x-icon name="lock" /><input type="password" name="password_confirmation" autocomplete="new-password" required></div>
             </label>
         </div>
-        <button class="btn btn-primary auth-submit">Gửi mã xác minh</button>
+        <button class="btn btn-primary auth-submit">Đăng ký</button>
         @include('partials.social-login')
         <p class="auth-switch">Đã có tài khoản? <a href="{{ route('login') }}">Đăng nhập</a></p>
     </form>

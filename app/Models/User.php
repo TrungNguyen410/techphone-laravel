@@ -23,6 +23,12 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, SoftDeletes;
 
+    public const STATUSES = [
+        'active' => 'Hoạt động',
+        'locked' => 'Đã khóa',
+        'inactive' => 'Ngừng hoạt động',
+    ];
+
     /**
      * Get the attributes that should be cast.
      *

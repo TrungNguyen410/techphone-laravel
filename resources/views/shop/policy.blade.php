@@ -8,7 +8,7 @@
             <aside class="policy-index">
                 <span class="eyebrow">Trung tâm chính sách</span>
                 @foreach ($policies as $key => $item)
-                    <a href="{{ route('policies.show', $key) }}" @class(['active' => $key === $type])>{{ $item['title'] }}</a>
+                    <a href="{{ \App\Http\Controllers\Shop\PolicyController::url($key) }}" @class(['active' => $key === $type])>{{ $item['title'] }}</a>
                 @endforeach
             </aside>
             <article class="policy-content">

@@ -612,6 +612,7 @@ h4,
 
 .stat-icon,
 .table-actions button,
+.table-actions > a,
 .table-view-button,
 .review-admin-actions button {
   border-radius: var(--radius-control);

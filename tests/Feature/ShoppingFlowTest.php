@@ -130,4 +130,14 @@ class ShoppingFlowTest extends TestCase
         $this->get('/products')->assertDontSee($hidden->name);
         $this->get("/products/{$hidden->id}")->assertNotFound();
     }
+
+    public function test_privacy_and_data_deletion_pages_for_social_login(): void
+    {
+        $this->get('/privacy')->assertOk()->assertSee('Chính sách quyền riêng tư')->assertSee('Dữ liệu chúng tôi thu thập');
+        $this->get('/xoa-du-lieu')->assertOk()->assertSee('Hướng dẫn xóa dữ liệu người dùng')
+            ->assertSee(route('privacy'), false);
+        $this->get('/')->assertSee(route('privacy'), false)->assertSee(route('data-deletion'), false);
+        $this->get('/policies/payment')->assertOk()->assertSee('Xác nhận tự động');
+        $this->get('/policies/khong-co')->assertNotFound();
+    }
 }

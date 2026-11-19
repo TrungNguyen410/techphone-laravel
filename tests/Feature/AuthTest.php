@@ -58,27 +58,38 @@ class AuthTest extends TestCase
         $this->actingAs(User::factory()->admin()->create())->get('/admin/dashboard')->assertOk();
     }
 
-    public function test_registration_with_otp_creates_account(): void
+    public function test_registration_creates_account_without_otp(): void
     {
         $this->post('/register', [
             'full_name' => 'Khách Mới',
-            'phone' => '0977777777',
+            'phone' => '+84 977 777 777',
             'password' => 'matkhau1',
             'password_confirmation' => 'matkhau1',
-        ])->assertRedirect(route('register.verify'));
-
-        $otp = session('otp_delivery')['debug_otp'];
-        $this->assertSame(0, User::count(), 'Chưa tạo tài khoản trước khi xác minh OTP');
-
-        $this->post('/register/verify', ['otp' => $otp === '000000' ? '111111' : '000000'])
-            ->assertSessionHas('toast', fn ($toast) => str_contains($toast['message'], 'OTP không hợp lệ'));
-        $this->post('/register/verify', ['otp' => $otp])->assertRedirect(route('login'));
+        ])->assertRedirect(route('login'))
+            ->assertSessionHas('toast', fn ($toast) => $toast['message'] === 'Đăng ký thành công. Vui lòng đăng nhập!');
 
         $user = User::where('phone', '0977777777')->first();
         $this->assertNotNull($user);
         $this->assertTrue(password_verify('matkhau1', $user->password));
+        $this->assertSame('customer', $user->role);
+        $this->assertSame('phone', $user->auth_provider);
+        $this->assertNull($user->phone_verified_at, 'Đăng ký không gửi SMS nên số điện thoại chưa được xác minh');
+        $this->assertGuest();
 
-        $this->post('/register/verify', ['otp' => $otp])->assertStatus(419);
+        $this->post('/login', ['identifier' => '0977777777', 'password' => 'matkhau1'])->assertRedirect(route('home'));
+        $this->assertAuthenticatedAs($user);
+    }
+
+    public function test_registration_cannot_choose_role_or_status(): void
+    {
+        $this->post('/register', [
+            'full_name' => 'Hacker', 'phone' => '0966666666', 'password' => '123456', 'password_confirmation' => '123456',
+            'role' => 'admin', 'status' => 'locked',
+        ]);
+
+        $user = User::where('phone', '0966666666')->firstOrFail();
+        $this->assertSame('customer', $user->role);
+        $this->assertSame('active', $user->status);
     }
 
     public function test_duplicate_phone_cannot_register(): void

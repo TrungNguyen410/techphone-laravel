@@ -42,6 +42,8 @@ Route::get('/reviews', [Shop\ReviewController::class, 'index'])->name('reviews.i
 Route::get('/contact', [Shop\ContactController::class, 'index'])->name('contact.index');
 Route::post('/contact', [Shop\ContactController::class, 'store'])->middleware('throttle:10,1')->name('contact.store');
 Route::get('/policies/{type}', Shop\PolicyController::class)->name('policies.show');
+Route::get('/privacy', [Shop\PolicyController::class, 'privacy'])->name('privacy');
+Route::get('/xoa-du-lieu', [Shop\PolicyController::class, 'dataDeletion'])->name('data-deletion');
 Route::get('/sitemap.xml', Shop\SitemapController::class)->name('sitemap');
 
 Route::get('/payment/vnpay/return', [Shop\PaymentController::class, 'vnpayReturn'])->name('payments.vnpay.return');
@@ -78,7 +80,7 @@ Route::middleware('auth')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| Xác thực: đăng nhập, đăng ký bằng OTP, quên mật khẩu
+| Xác thực: đăng nhập, đăng ký, quên mật khẩu bằng OTP
 |--------------------------------------------------------------------------
 */
 Route::middleware('guest')->group(function () {
@@ -86,9 +88,7 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [LoginController::class, 'login'])->middleware('throttle:login')->name('login.attempt');
 
     Route::get('/register', [RegisterController::class, 'show'])->name('register');
-    Route::post('/register', [RegisterController::class, 'requestOtp'])->middleware('throttle:otp-request')->name('register.otp');
-    Route::get('/register/verify', [RegisterController::class, 'showVerify'])->name('register.verify');
-    Route::post('/register/verify', [RegisterController::class, 'verify'])->middleware('throttle:otp-verify')->name('register.verify.submit');
+    Route::post('/register', [RegisterController::class, 'store'])->middleware('throttle:register')->name('register.store');
 
     Route::get('/forgot-password', [PasswordResetController::class, 'show'])->name('password.request');
     Route::post('/forgot-password', [PasswordResetController::class, 'requestOtp'])->middleware('throttle:otp-request')->name('password.otp');
@@ -119,11 +119,13 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::get('/', 'index')->name('index');
         Route::patch('/{order}/status', 'updateStatus')->name('status');
         Route::put('/{order}/shipping', 'updateShipping')->name('shipping');
+        Route::put('/{order}/customer', 'updateCustomer')->name('customer');
         Route::put('/{order}/payment', 'reconcilePayment')->name('payment');
         Route::delete('/{order}', 'destroy')->name('destroy');
     });
 
     Route::get('/customers', [Admin\CustomerController::class, 'index'])->name('customers.index');
+    Route::put('/customers/{user}', [Admin\CustomerController::class, 'update'])->name('customers.update');
     Route::patch('/customers/{user}/lock', [Admin\CustomerController::class, 'toggleLock'])->name('customers.lock');
     Route::post('/customers/{user}/vouchers', [Admin\CustomerController::class, 'giftVoucher'])->name('customers.vouchers.store');
 
@@ -138,6 +140,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/reviews', [Admin\ReviewController::class, 'index'])->name('reviews.index');
     Route::patch('/reviews/{review}/{status}', [Admin\ReviewController::class, 'moderate'])
         ->whereIn('status', ['approved', 'rejected'])->name('reviews.moderate');
+    Route::put('/reviews/{review}', [Admin\ReviewController::class, 'update'])->name('reviews.update');
     Route::delete('/reviews/{review}', [Admin\ReviewController::class, 'destroy'])->name('reviews.destroy');
 
     Route::get('/settings', [Admin\SettingController::class, 'edit'])->name('settings.edit');

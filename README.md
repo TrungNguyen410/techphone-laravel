@@ -12,7 +12,7 @@ giữ nguyên toàn bộ nghiệp vụ và giao diện.
 | CSDL | MySQL 8 (migration + seeder), phpMyAdmin để xem dữ liệu |
 | Giao diện | Blade + Bootstrap 5 + CSS design token của bản gốc, JavaScript thuần (không cần build), Chart.js |
 | Thanh toán | COD, chuyển khoản **VietQR theo mã đơn + tự động xác nhận qua webhook SePay**, MoMo, cổng **VNPay** (HMAC-SHA512, IPN) |
-| Xác thực | Đăng nhập bằng số điện thoại, đăng ký & quên mật khẩu bằng **OTP SMS** (Twilio), **Google/Facebook** (Firebase Authentication) |
+| Xác thực | Đăng ký/đăng nhập bằng số điện thoại + mật khẩu (không gửi SMS), quên mật khẩu bằng **OTP SMS** (Twilio), **Google/Facebook** (Firebase Authentication) |
 | Chatbot AI | **Google Gemini** (function calling, 7 công cụ lấy dữ liệu thật), stream SSE, chế độ offline khi không có API key |
 | Môi trường | Docker Compose (PHP-Apache, MySQL, phpMyAdmin) |
 
@@ -41,7 +41,7 @@ Tài khoản mẫu (mật khẩu `123456`):
 Dữ liệu thử: đơn `TP260601` + SĐT `0911111111` để tra cứu; voucher `TECH10`, `GIAM200K`, `FREESHIP`
 (`EXPIRED50`, `USEDUP`, `OFFLINE` là các mã lỗi để thử kiểm tra).
 
-Khi chưa cấu hình Twilio, môi trường dev hiển thị luôn mã OTP trên màn hình. Khi chưa có mã VNPay sandbox
+Khi chưa cấu hình Twilio, môi trường dev hiển thị luôn mã OTP quên mật khẩu trên màn hình. Khi chưa có mã VNPay sandbox
 (`VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET` trong `.env`), phương thức VNPay tự ẩn ở trang thanh toán.
 
 Khách `0911111111` đã có **địa chỉ nhận hàng lưu sẵn** và **voucher tặng riêng** `TRIANMA2026` (Tài khoản → Voucher của tôi);
@@ -80,18 +80,19 @@ curl -X POST http://localhost:8000/payment/sepay/webhook -H "Authorization: Apik
   tìm phụ kiện, tra cứu đơn (mã đơn + SĐT, giới hạn 10 lần/15 phút), khuyến mãi, chính sách (kho kiến thức); thẻ sản phẩm thêm
   vào giỏ ngay; đánh giá 👍/👎; trả lời dạng stream; giới hạn 20 tin/phút/IP, tối đa 1000 ký tự.
 - Đăng nhập/đăng ký bằng **Google hoặc Facebook** (không gộp vào tài khoản có sẵn cùng email).
-- Đánh giá sản phẩm/phụ kiện/dịch vụ kèm ảnh (chờ duyệt, gắn nhãn "Đã mua hàng"), liên hệ, chính sách, sitemap.xml.
+- Đánh giá sản phẩm/phụ kiện/dịch vụ kèm ảnh (chờ duyệt, gắn nhãn "Đã mua hàng"), liên hệ, chính sách (gồm **quyền riêng tư** `/privacy` và **xóa dữ liệu người dùng** `/xoa-du-lieu` mà Facebook Login yêu cầu), sitemap.xml.
 
 **Quản trị** (`/admin`)
 - Tổng quan: thống kê; **3 biểu đồ doanh thu dạng wireframe** theo năm (5 năm), theo tháng và theo ngày (tháng/năm hiện tại
-  chỉ vẽ tới hôm nay); phân bổ trạng thái đơn; **top 5 khách hàng** chi tiêu nhiều nhất + **tặng voucher riêng** dùng 1 lần;
+  chỉ vẽ tới hôm nay); phân bổ trạng thái đơn; **top 10 khách hàng** chi tiêu nhiều nhất + **tặng voucher riêng** dùng 1 lần;
   **cảnh báo tồn kho** (còn ≤ 10, cả điện thoại và phụ kiện); top bán chạy gồm cả phụ kiện; đơn gần đây.
 - CRUD điện thoại, phụ kiện (tối đa 5 ảnh), danh mục, thương hiệu, banner, voucher. Mọi ô ảnh đều **tải lên từ máy tính**
   (bấm chọn hoặc kéo thả, xem trước) hoặc dùng URL ảnh; danh sách sản phẩm có nhãn "Sắp hết / Hết hàng".
 - **Chatbot AI**: trạng thái Gemini/offline, thống kê (phiên, tỉ lệ hài lòng, thời gian phản hồi, công cụ hay dùng), câu hỏi gần đây,
   cấu hình lời chào/câu hỏi gợi ý/bật-tắt, xem lại hội thoại; **kho kiến thức** để "dạy" chatbot chính sách cửa hàng.
-- Đơn hàng: tìm/lọc, đổi trạng thái theo luồng, cập nhật vận đơn, đối soát chuyển khoản, lưu trữ.
-- Khách hàng (số đơn, tổng chi tiêu, khóa/mở khóa), duyệt đánh giá, xử lý liên hệ, cài đặt cửa hàng.
+- Đơn hàng: tìm/lọc, đổi trạng thái theo luồng, **sửa thông tin người nhận và ghi chú** (không đổi giá/phí ship), cập nhật vận đơn, đối soát chuyển khoản, lưu trữ.
+- Khách hàng (số đơn, tổng chi tiêu, khóa/mở khóa, **sửa họ tên/email/SĐT/địa chỉ, trạng thái "Ngừng hoạt động", cấp quyền quản trị**),
+  duyệt và **sửa đánh giá** (số sao, nội dung, gỡ ảnh), xử lý liên hệ, cài đặt cửa hàng.
 
 ## Quy tắc nghiệp vụ chính
 
@@ -114,7 +115,7 @@ curl -X POST http://localhost:8000/payment/sepay/webhook -H "Authorization: Apik
 ```
 app/
   Http/Controllers/Shop    # trang khách hàng
-  Http/Controllers/Auth    # đăng nhập, đăng ký OTP, quên mật khẩu
+  Http/Controllers/Auth    # đăng nhập, đăng ký, quên mật khẩu (OTP)
   Http/Controllers/Admin   # trang quản trị
   Http/Middleware          # phân quyền admin, chặn tài khoản bị khóa
   Models                   # Eloquent model + quan hệ

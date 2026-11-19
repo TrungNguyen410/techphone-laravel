@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\AdminOrderCustomerRequest;
 use App\Models\Order;
 use App\Services\OrderService;
 use App\Services\Payments\PaymentService;
@@ -57,6 +58,13 @@ class OrderController extends Controller
         $this->orders->updateShipping($order, $data);
 
         return back()->with('toast', ['type' => 'success', 'message' => "Đã cập nhật vận đơn {$order->order_number}"]);
+    }
+
+    public function updateCustomer(AdminOrderCustomerRequest $request, Order $order): RedirectResponse
+    {
+        $this->orders->updateCustomer($order, $request->validated());
+
+        return back()->with('toast', ['type' => 'success', 'message' => "Đã cập nhật thông tin người nhận đơn {$order->order_number}"]);
     }
 
     public function reconcilePayment(Request $request, Order $order, PaymentService $payments): RedirectResponse

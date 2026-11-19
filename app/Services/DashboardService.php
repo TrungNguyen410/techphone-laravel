@@ -27,7 +27,7 @@ class DashboardService
 
     private const TOP_PRODUCTS = 5;
 
-    private const TOP_CUSTOMERS = 5;
+    private const TOP_CUSTOMERS = 10;
 
     private const LOW_STOCK_SHOWN = 20;
 

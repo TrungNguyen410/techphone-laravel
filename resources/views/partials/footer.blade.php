@@ -17,6 +17,8 @@
             <a href="{{ route('policies.show', 'returns') }}">Đổi trả</a>
             <a href="{{ route('policies.show', 'shipping') }}">Vận chuyển</a>
             <a href="{{ route('policies.show', 'payment') }}">Thanh toán</a>
+            <a href="{{ route('privacy') }}">Quyền riêng tư</a>
+            <a href="{{ route('data-deletion') }}">Xóa dữ liệu</a>
         </nav>
         <div class="footer-contact-line">
             <span><x-icon name="map-pin" /> {{ $store['address'] }}</span>

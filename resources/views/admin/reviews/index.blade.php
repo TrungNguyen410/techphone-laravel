@@ -31,6 +31,7 @@
                                 <td><span class="review-status {{ $review->status }}">{{ App\Models\Review::STATUSES[$review->status] }}</span></td>
                                 <td>
                                     <div class="review-admin-actions">
+                                        <a class="edit" href="{{ route('admin.reviews.index', [...request()->only('status', 'page'), 'edit' => $review->id]) }}" aria-label="Sửa đánh giá" title="Sửa đánh giá"><x-icon name="edit-2" /></a>
                                         @if ($review->status !== 'approved')
                                             <form method="POST" action="{{ route('admin.reviews.moderate', [$review, 'approved']) }}" class="inline-form">
                                                 @csrf @method('PATCH')
@@ -57,4 +58,57 @@
             {{ $reviews->links() }}
         @endif
     </div>
+
+    @if ($editing)
+        @php $closeUrl = route('admin.reviews.index', request()->only('status', 'page')); @endphp
+        <dialog class="accessible-dialog admin-form-dialog" aria-label="Sửa đánh giá" data-autoshow data-close-url="{{ $closeUrl }}">
+            <form class="admin-form-modal simple-form-modal" method="POST" action="{{ route('admin.reviews.update', $editing) }}">
+                @csrf @method('PUT')
+                <input type="hidden" name="status_filter" value="{{ $filter }}">
+                <div class="admin-modal-head">
+                    <div><span>Sửa đánh giá · {{ $editing->user_name }}</span><h2>{{ $editing->targetName() }}</h2></div>
+                    <a href="{{ $closeUrl }}" class="admin-modal-close" aria-label="Đóng"><x-icon name="x" /></a>
+                </div>
+                <div class="form-grid">
+                    <label class="form-field">
+                        <span>Số sao</span>
+                        <select name="rating">
+                            @for ($star = 5; $star >= 1; $star--)
+                                <option value="{{ $star }}" @selected((int) old('rating', $editing->rating) === $star)>{{ $star }} sao</option>
+                            @endfor
+                        </select>
+                        @error('rating')<small>{{ $message }}</small>@enderror
+                    </label>
+                    <label class="form-field">
+                        <span>Trạng thái</span>
+                        <select name="status">
+                            @foreach (App\Models\Review::STATUSES as $status => $label)
+                                <option value="{{ $status }}" @selected(old('status', $editing->status) === $status)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                        @error('status')<small>{{ $message }}</small>@enderror
+                    </label>
+                    <label class="form-field full">
+                        <span>Nội dung *</span>
+                        <textarea name="comment" rows="4" minlength="10" maxlength="2000" required>{{ old('comment', $editing->comment) }}</textarea>
+                        @error('comment')<small>{{ $message }}</small>@enderror
+                    </label>
+                    @if (! empty($editing->images))
+                        <div class="form-field full">
+                            <span>Ảnh đính kèm (tick để gỡ ảnh)</span>
+                            <div class="review-admin-edit-images">
+                                @foreach ($editing->images as $image)
+                                    <label><img src="{{ media_url($image) }}" alt=""><input type="checkbox" name="remove_images[]" value="{{ $image }}"> Gỡ</label>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+                </div>
+                <div class="admin-modal-actions">
+                    <a class="btn btn-light" href="{{ $closeUrl }}">Hủy</a>
+                    <button class="btn btn-primary">Lưu đánh giá</button>
+                </div>
+            </form>
+        </dialog>
+    @endif
 @endsection

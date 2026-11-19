@@ -761,8 +761,10 @@
 }
 
 .table-actions button,
+.table-actions > a,
 .table-view-button,
-.review-admin-actions button {
+.review-admin-actions button,
+.review-admin-actions a.edit {
   display: grid;
   width: 30px;
   height: 30px;
@@ -1268,4 +1270,46 @@
   .admin-image-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+/* Sửa thông tin người nhận trong chi tiết đơn (giao diện tạm) */
+.admin-order-edit {
+  margin: 14px 0;
+  border: 1px solid var(--color-rule, #e2e8f0);
+  border-radius: 10px;
+  background: var(--color-paper-sunken, #f8fafc);
+}
+
+.admin-order-edit > summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 13px;
+  cursor: pointer;
+  font-weight: 750;
+}
+
+.admin-order-edit > form {
+  margin: 0;
+  padding: 0 13px 13px;
+}
+
+.review-admin-edit-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.review-admin-edit-images label {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  font-size: 12px;
+}
+
+.review-admin-edit-images img {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 8px;
 }

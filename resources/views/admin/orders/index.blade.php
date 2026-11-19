@@ -93,8 +93,8 @@
             @endif
 
             @if ($selected->transactions->isNotEmpty())
-                <section class="admin-payment-audit" aria-label="Giao dịch VNPay">
-                    <h3>Giao dịch VNPay</h3>
+                <section class="admin-payment-audit" aria-label="Giao dịch thanh toán">
+                    <h3>Giao dịch thanh toán (VNPay / SePay)</h3>
                     @foreach ($selected->transactions as $transaction)
                         <div><small>{{ $transaction->reference }}</small><strong>{{ $transaction->status }} · {{ money($transaction->amount) }}{{ $transaction->bank_code ? ' · '.$transaction->bank_code : '' }}</strong></div>
                     @endforeach
@@ -115,6 +115,35 @@
                     </div>
                 </form>
             @endif
+
+            @php
+                $customerErrors = $errors->hasAny(['full_name', 'phone', 'email', 'address', 'province', 'ward', 'order_note']);
+            @endphp
+            <details class="admin-order-edit" @if ($customerErrors) open @endif>
+                <summary><x-icon name="edit-2" /> Sửa thông tin người nhận &amp; ghi chú</summary>
+                <form class="admin-tracking-form" method="POST" action="{{ route('admin.orders.customer', $selected) }}">
+                    @csrf @method('PUT')
+                    <p class="admin-page-note"><x-icon name="alert-circle" /> Chỉ đổi thông tin giao nhận; giá, phí vận chuyển và sản phẩm của đơn giữ nguyên.</p>
+                    @include('partials.shipping-address-fields', [
+                        'prefix' => 'admin-order-'.$selected->id,
+                        'provinces' => \App\Services\ShippingService::PROVINCES,
+                        'values' => [
+                            'full_name' => $selected->customer_name,
+                            'phone' => $selected->customer_phone,
+                            'email' => $selected->customer_email,
+                            'address' => $selected->customer_address,
+                            'province' => $selected->province,
+                            'ward' => $selected->ward,
+                        ],
+                    ])
+                    <label class="form-field full">
+                        <span>Ghi chú đơn hàng</span>
+                        <textarea name="order_note" rows="2" maxlength="1000">{{ old('order_note', $selected->note) }}</textarea>
+                        @error('order_note')<small>{{ $message }}</small>@enderror
+                    </label>
+                    <button class="btn btn-primary">Lưu thông tin người nhận</button>
+                </form>
+            </details>
 
             <form class="admin-tracking-form" method="POST" action="{{ route('admin.orders.shipping', $selected) }}">
                 @csrf @method('PUT')

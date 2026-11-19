@@ -69,6 +69,9 @@ class AppServiceProvider extends ServiceProvider
             Limit::perMinute(5)->by('login-id:'.mb_strtolower((string) $request->input('identifier'))),
         ]);
 
+        // Đăng ký: tối đa 10 lần mỗi 15 phút cho một địa chỉ IP.
+        RateLimiter::for('register', fn (Request $request) => Limit::perMinutes(15, 10)->by('register-ip:'.$request->ip()));
+
         RateLimiter::for('otp-request', fn (Request $request) => [
             Limit::perMinutes(10, 5)->by('otp-ip:'.$request->ip()),
             Limit::perMinutes(10, 3)->by('otp-phone:'.preg_replace('/\D/', '', (string) $request->input('phone', $request->input('identifier')))),

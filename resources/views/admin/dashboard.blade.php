@@ -139,7 +139,7 @@
     <section class="chart-grid">
         <div class="admin-table-card top-customers">
             <div class="admin-table-title">
-                <div><h2>Top 5 khách hàng mua nhiều nhất</h2><span>Theo tổng chi tiêu đơn đã giao/hoàn thành · tặng voucher riêng để tri ân</span></div>
+                <div><h2>Top 10 khách hàng mua nhiều nhất</h2><span>Theo tổng chi tiêu đơn đã giao/hoàn thành · tặng voucher riêng để tri ân</span></div>
                 <a href="{{ route('admin.customers.index') }}">Tất cả khách hàng</a>
             </div>
             @if ($topCustomers->isEmpty())

@@ -157,7 +157,7 @@ class CustomerFeaturesTest extends TestCase
         $this->assertCount(31, $dashboard->revenue(2026, 10)['daily']);
 
         $top = $dashboard->topCustomers();
-        $this->assertCount(5, $top);
+        $this->assertCount(6, $top, "Cả 6 khách có đơn đã giao đều nằm trong top 10");
         $this->assertSame($buyers[5]->id, $top->first()->id);
 
         $this->makeProduct(['name' => 'Sắp hết A', 'stock' => 3]);
@@ -171,7 +171,7 @@ class CustomerFeaturesTest extends TestCase
 
         $this->actingAs(User::factory()->create(['role' => 'admin']))->get('/admin/dashboard')->assertOk()
             ->assertSee('Theo năm')->assertSee('Theo tháng')->assertSee('Theo ngày')
-            ->assertSee('Từ 1/11 đến hôm nay 18/11/2026')->assertSee('Top 5 khách hàng')->assertSee('Cảnh báo tồn kho')
+            ->assertSee('Từ 1/11 đến hôm nay 18/11/2026')->assertSee('Top 10 khách hàng')->assertSee('Cảnh báo tồn kho')
             ->assertSee('data-revenue-chart="daily"', false);
         Carbon::setTestNow();
     }

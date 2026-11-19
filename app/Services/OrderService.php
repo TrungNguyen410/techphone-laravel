@@ -217,6 +217,30 @@ class OrderService
     }
 
     /**
+     * Sửa thông tin người nhận và ghi chú (chỉ những trường an toàn: không đổi giá, phí ship hay sản phẩm).
+     *
+     * @param  array{full_name: string, phone: string, email?: ?string, address: string, province: string, ward: string, order_note?: ?string}  $data
+     */
+    public function updateCustomer(Order $order, array $data): Order
+    {
+        $customer = $this->canonicalCustomer([...$data, 'district' => '']);
+
+        $order->update([
+            'customer_name' => $customer['full_name'],
+            'customer_email' => $customer['email'],
+            'customer_phone' => $customer['phone'],
+            'customer_address' => $customer['address'],
+            'province' => $customer['province'],
+            // Địa chỉ theo đơn vị hành chính mới: bỏ quận/huyện cũ khi sửa.
+            'district' => '',
+            'ward' => $customer['ward'],
+            'note' => trim((string) ($data['order_note'] ?? '')),
+        ]);
+
+        return $order;
+    }
+
+    /**
      * Lưu trữ (xóa mềm) đơn: đơn chưa giao sẽ được hủy trước.
      */
     public function archive(Order $order): void

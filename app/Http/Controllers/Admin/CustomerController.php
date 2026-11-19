@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Voucher;
+use App\Rules\VietnamesePhoneRule;
 use App\Services\VoucherService;
+use App\Support\VietnamesePhone;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -31,7 +33,52 @@ class CustomerController extends Controller
                 ->orWhere('phone', 'like', "%{$search}%"));
         }
 
-        return view('admin.customers.index', ['customers' => $query->paginate(20)->withQueryString()]);
+        return view('admin.customers.index', [
+            'customers' => $query->paginate(20)->withQueryString(),
+            'editing' => $request->filled('edit') ? User::customers()->find($request->query('edit')) : null,
+        ]);
+    }
+
+    /**
+     * Sửa thông tin tài khoản khách hàng: họ tên, email, số điện thoại, địa chỉ, vai trò và trạng thái.
+     * Chỉ áp dụng cho tài khoản khách hàng (không sửa tài khoản quản trị khác tại đây).
+     */
+    public function update(Request $request, User $user): RedirectResponse
+    {
+        abort_if($user->isAdmin(), 404, 'Không tìm thấy khách hàng');
+
+        $request->merge(['phone' => VietnamesePhone::normalize((string) $request->input('phone')) ?? $request->input('phone')]);
+        $data = $request->validate([
+            'full_name' => ['required', 'string', 'max:100'],
+            'email' => ['nullable', 'email', 'max:150', Rule::unique('users', 'email')->ignore($user)],
+            // Tài khoản Google/Facebook có thể chưa có số điện thoại.
+            'phone' => [$user->isSocialAccount() ? 'nullable' : 'required', new VietnamesePhoneRule, Rule::unique('users', 'phone')->ignore($user)],
+            'address' => ['nullable', 'string', 'max:255'],
+            'role' => ['required', Rule::in(['customer', 'admin'])],
+            'status' => ['required', Rule::in(array_keys(User::STATUSES))],
+        ], [
+            'required' => 'Vui lòng nhập thông tin này',
+            'full_name.max' => 'Họ và tên tối đa 100 ký tự',
+            'email.email' => 'Email không hợp lệ',
+            'email.unique' => 'Email này đã được dùng cho tài khoản khác',
+            'phone.unique' => 'Số điện thoại này đã được đăng ký',
+            'role.in' => 'Vai trò người dùng không hợp lệ',
+            'status.in' => 'Trạng thái khách hàng không hợp lệ',
+        ]);
+
+        $user->update([
+            'full_name' => trim($data['full_name']),
+            'email' => filled($data['email'] ?? null) ? mb_strtolower(trim($data['email'])) : null,
+            'phone' => $data['phone'] ?: null,
+            'address' => trim((string) ($data['address'] ?? '')),
+            'role' => $data['role'],
+            'status' => $data['status'],
+        ]);
+
+        return redirect()->route('admin.customers.index', $request->only('search', 'page'))
+            ->with('toast', ['type' => 'success', 'message' => $user->isAdmin()
+                ? "Đã cấp quyền quản trị cho {$user->full_name}"
+                : "Đã cập nhật khách hàng {$user->full_name}"]);
     }
 
     /**
