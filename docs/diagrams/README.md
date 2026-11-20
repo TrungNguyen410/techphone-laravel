@@ -53,10 +53,12 @@ tím = dịch vụ AI / xác thực bên ngoài, cam = cổng thanh toán, đỏ
 | [sequence-dat-hang](sequence-dat-hang.drawio.png) | `OrderService::create`: idempotency, khóa dòng, giữ voucher, trừ kho có điều kiện, mã đơn |
 | [sequence-chatbot](sequence-chatbot.drawio.png) | `ChatService` gọi Gemini, Gemini yêu cầu công cụ, `ChatTools` truy vấn CSDL, stream về widget |
 | [sequence-sepay](sequence-sepay.drawio.png) | Webhook SePay: xác thực API key, chống trùng, cộng chuyển thiếu, trang đơn tự cập nhật |
+| [sequence-xoa-tai-khoan](sequence-xoa-tai-khoan.drawio.png) | `CustomerAccountService::delete`: chặn khi còn đơn đang xử lý, xóa dữ liệu cá nhân, ẩn danh đơn/đánh giá, giải phóng SĐT/email |
 
 ![Sequence đặt hàng](sequence-dat-hang.drawio.png)
 ![Sequence chatbot](sequence-chatbot.drawio.png)
 ![Sequence SePay](sequence-sepay.drawio.png)
+![Sequence xóa tài khoản](sequence-xoa-tai-khoan.drawio.png)
 
 ## Xuất lại ảnh
 
