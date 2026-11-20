@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Voucher;
 use App\Rules\VietnamesePhoneRule;
+use App\Services\CustomerAccountService;
 use App\Services\VoucherService;
 use App\Support\VietnamesePhone;
 use Illuminate\Database\Eloquent\Builder;
@@ -35,7 +36,7 @@ class CustomerController extends Controller
 
         return view('admin.customers.index', [
             'customers' => $query->paginate(20)->withQueryString(),
-            'editing' => $request->filled('edit') ? User::customers()->find($request->query('edit')) : null,
+            'editing' => is_numeric($request->query('edit')) ? User::customers()->find((int) $request->query('edit')) : null,
         ]);
     }
 
@@ -66,19 +67,34 @@ class CustomerController extends Controller
             'status.in' => 'Trạng thái khách hàng không hợp lệ',
         ]);
 
-        $user->update([
+        $phone = $data['phone'] ?: null;
+        $user->forceFill([
             'full_name' => trim($data['full_name']),
             'email' => filled($data['email'] ?? null) ? mb_strtolower(trim($data['email'])) : null,
-            'phone' => $data['phone'] ?: null,
+            'phone' => $phone,
             'address' => trim((string) ($data['address'] ?? '')),
             'role' => $data['role'],
             'status' => $data['status'],
-        ]);
+            // Số mới chưa được xác minh nên bỏ dấu "đã xác minh" của số cũ.
+            'phone_verified_at' => $phone === $user->phone ? $user->phone_verified_at : null,
+        ])->save();
 
         return redirect()->route('admin.customers.index', $request->only('search', 'page'))
             ->with('toast', ['type' => 'success', 'message' => $user->isAdmin()
                 ? "Đã cấp quyền quản trị cho {$user->full_name}"
                 : "Đã cập nhật khách hàng {$user->full_name}"]);
+    }
+
+    /**
+     * Xóa tài khoản theo yêu cầu của khách: xóa dữ liệu cá nhân, ẩn danh đơn hàng/đánh giá, giải phóng SĐT và email.
+     */
+    public function destroy(Request $request, User $user, CustomerAccountService $accounts): RedirectResponse
+    {
+        $name = $user->full_name;
+        $accounts->delete($user);
+
+        return redirect()->route('admin.customers.index', $request->only('search', 'page'))
+            ->with('toast', ['type' => 'success', 'message' => "Đã xóa tài khoản {$name} và dữ liệu cá nhân"]);
     }
 
     /**

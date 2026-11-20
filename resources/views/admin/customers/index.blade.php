@@ -42,6 +42,12 @@
                                             @endif
                                         </button>
                                     </form>
+                                    <form method="POST" action="{{ route('admin.customers.destroy', [$customer, ...request()->only('search', 'page')]) }}" class="inline-form"
+                                          data-confirm="Xóa họ tên, SĐT, email, địa chỉ, yêu thích, lịch sử chat và voucher chưa dùng. Đơn hàng, đánh giá được giữ ở dạng ẩn danh. Không thể hoàn tác."
+                                          data-confirm-title="Xóa tài khoản {{ $customer->full_name }}?">
+                                        @csrf @method('DELETE')
+                                        <button class="danger" aria-label="Xóa tài khoản {{ $customer->full_name }}" title="Xóa tài khoản (yêu cầu xóa dữ liệu)"><x-icon name="trash-2" /></button>
+                                    </form>
                                     </div>
                                 </td>
                             </tr>

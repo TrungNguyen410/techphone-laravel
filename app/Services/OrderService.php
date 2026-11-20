@@ -223,7 +223,22 @@ class OrderService
      */
     public function updateCustomer(Order $order, array $data): Order
     {
+        if (! $order->canEditReceiver()) {
+            throw new BusinessException('Chỉ sửa được thông tin người nhận khi đơn đang chờ xác nhận hoặc đã xác nhận (chưa giao cho vận chuyển)');
+        }
+
         $customer = $this->canonicalCustomer([...$data, 'district' => '']);
+
+        // Phí ship đã chốt theo tỉnh lúc đặt: không cho đổi sang tỉnh có mức phí khác (tổng tiền và đối soát sẽ sai).
+        if ($customer['province'] !== $order->province
+            && $this->shipping->quote($customer['province'], $order->subtotal)['fee'] !== $order->shipping_fee) {
+            throw new BusinessException(sprintf(
+                'Đổi sang %s làm thay đổi phí vận chuyển (%s → %s). Hãy hủy đơn và để khách đặt lại với địa chỉ mới.',
+                $customer['province'],
+                money($order->shipping_fee),
+                money($this->shipping->quote($customer['province'], $order->subtotal)['fee']),
+            ));
+        }
 
         $order->update([
             'customer_name' => $customer['full_name'],

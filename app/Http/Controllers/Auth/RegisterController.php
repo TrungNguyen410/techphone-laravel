@@ -37,11 +37,14 @@ class RegisterController extends Controller
         ]);
 
         $phone = VietnamesePhone::normalize($data['phone']);
-        if (User::withTrashed()->where('phone', $phone)->exists()) {
+        if (User::where('phone', $phone)->exists()) {
             throw new BusinessException('Số điện thoại này đã được đăng ký', 409);
         }
 
         try {
+            // Số điện thoại của tài khoản đã xóa được giải phóng để người khác (hoặc chính chủ) đăng ký lại.
+            User::onlyTrashed()->where('phone', $phone)->update(['phone' => null]);
+
             User::create([
                 'full_name' => trim($data['full_name']),
                 'phone' => $phone,

@@ -134,6 +134,12 @@ class Order extends Model
         return $this->status === 'pending' && ! $this->isPaymentSettled();
     }
 
+    /** Chỉ sửa thông tin người nhận khi đơn chưa giao cho đơn vị vận chuyển. */
+    public function canEditReceiver(): bool
+    {
+        return in_array($this->status, ['pending', 'confirmed'], true);
+    }
+
     /** Đơn chuyển khoản còn chờ tiền về: hiển thị mã VietQR với nội dung là mã đơn. */
     public function awaitsBankTransfer(): bool
     {

@@ -126,6 +126,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     Route::get('/customers', [Admin\CustomerController::class, 'index'])->name('customers.index');
     Route::put('/customers/{user}', [Admin\CustomerController::class, 'update'])->name('customers.update');
+    Route::delete('/customers/{user}', [Admin\CustomerController::class, 'destroy'])->name('customers.destroy');
     Route::patch('/customers/{user}/lock', [Admin\CustomerController::class, 'toggleLock'])->name('customers.lock');
     Route::post('/customers/{user}/vouchers', [Admin\CustomerController::class, 'giftVoucher'])->name('customers.vouchers.store');
 

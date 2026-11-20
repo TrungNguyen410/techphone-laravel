@@ -182,20 +182,49 @@ class AdminTest extends TestCase
 
         $this->put("/admin/orders/{$order->id}/customer", [
             'full_name' => 'Trần Thị B', 'phone' => '0987 654 321', 'email' => '', 'address' => '99 Trần Phú',
-            'province' => 'Hà Nội', 'ward' => 'Phường Hoàn Kiếm', 'order_note' => 'Gọi trước khi giao',
+            'province' => 'TP. Hồ Chí Minh', 'ward' => 'Phường Sài Gòn', 'order_note' => 'Gọi trước khi giao',
         ])->assertSessionHas('toast.type', 'success');
 
         $order->refresh();
         $this->assertSame('Trần Thị B', $order->customer_name);
         $this->assertSame('0987654321', $order->customer_phone);
-        $this->assertSame('Hà Nội', $order->province);
-        $this->assertSame('Phường Hoàn Kiếm', $order->ward);
+        $this->assertSame('99 Trần Phú', $order->customer_address);
         $this->assertSame('Gọi trước khi giao', $order->note);
         $this->assertSame($total, $order->total, 'Sửa người nhận không đổi tổng tiền');
 
+        // TP.HCM (20.000đ) → Hà Nội (30.000đ): phí ship thay đổi nên bị chặn.
         $this->put("/admin/orders/{$order->id}/customer", [
-            'full_name' => 'B', 'phone' => '123', 'address' => 'x', 'province' => 'Hà Nội', 'ward' => 'Phường Hoàn Kiếm',
+            'full_name' => 'Trần Thị B', 'phone' => '0987654321', 'address' => '1 Hàng Bài',
+            'province' => 'Hà Nội', 'ward' => 'Phường Hoàn Kiếm',
+        ])->assertSessionHas('toast', fn ($toast) => $toast['type'] === 'error' && str_contains($toast['message'], 'phí vận chuyển'));
+        $this->assertSame('TP. Hồ Chí Minh', $order->fresh()->province);
+
+        $this->put("/admin/orders/{$order->id}/customer", [
+            'full_name' => 'B', 'phone' => '123', 'address' => 'x', 'province' => 'TP. Hồ Chí Minh', 'ward' => 'Phường Sài Gòn',
         ])->assertSessionHasErrors('phone');
+
+        // Đơn đã giao cho vận chuyển: không sửa được và không hiện form.
+        $order->update(['status' => 'shipping']);
+        $this->get("/admin/orders?view={$order->id}")->assertOk()->assertDontSee('Sửa thông tin người nhận');
+        $this->put("/admin/orders/{$order->id}/customer", [
+            'full_name' => 'Người Khác', 'phone' => '0987654321', 'address' => '5 Lê Lợi',
+            'province' => 'TP. Hồ Chí Minh', 'ward' => 'Phường Sài Gòn',
+        ])->assertSessionHas('toast.type', 'error');
+        $this->assertSame('Trần Thị B', $order->fresh()->customer_name);
+    }
+
+    public function test_free_shipping_order_can_move_to_another_province(): void
+    {
+        $phone = $this->makeProduct(['price' => 12000000, 'stock' => 5]);
+        $order = app(OrderService::class)->create([
+            'items' => [['type' => 'product', 'id' => $phone->id, 'quantity' => 1]], 'customer' => $this->customer(),
+        ], null);
+        $this->assertSame(0, $order->shipping_fee);
+
+        $this->put("/admin/orders/{$order->id}/customer", [
+            'full_name' => 'A', 'phone' => '0912345678', 'address' => '1 Hàng Bài', 'province' => 'Hà Nội', 'ward' => 'Phường Hoàn Kiếm',
+        ])->assertSessionHas('toast.type', 'success');
+        $this->assertSame('Hà Nội', $order->fresh()->province);
     }
 
     public function test_admin_edits_review_and_removes_image(): void
@@ -222,5 +251,102 @@ class AdminTest extends TestCase
         $this->assertSame('approved', $review->status);
         $this->assertSame(['uploads/reviews/b.jpg'], $review->images);
         Storage::disk('public')->assertMissing('uploads/reviews/a.jpg');
+    }
+
+    public function test_admin_deletes_customer_account_and_frees_phone(): void
+    {
+        $customer = User::factory()->create([
+            'phone' => '0944444444', 'email' => 'xoa@example.com', 'full_name' => 'Người Cần Xóa',
+            'shipping_address' => ['full_name' => 'Người Cần Xóa', 'phone' => '0944444444', 'email' => 'xoa@example.com', 'address' => '1 A', 'province' => 'Hà Nội', 'ward' => 'Phường Hoàn Kiếm'],
+        ]);
+        $phone = $this->makeProduct(['price' => 5000000, 'stock' => 5]);
+        $order = app(OrderService::class)->create([
+            'items' => [['type' => 'product', 'id' => $phone->id, 'quantity' => 1]],
+            'customer' => $this->customer(['full_name' => 'Người Cần Xóa', 'phone' => '0944444444']),
+        ], $customer);
+        $customer->wishlistItems()->create(['item_type' => 'product', 'item_id' => $phone->id]);
+        $session = \App\Models\ChatSession::create(['user_id' => $customer->id, 'visitor_id' => '', 'title' => 'Hỏi máy']);
+        $session->messages()->create(['role' => 'user', 'content' => 'Tư vấn giúp mình', 'source' => 'user']);
+        $gift = app(\App\Services\VoucherService::class)->giftToCustomer($customer, ['type' => 'fixed', 'value' => 100000, 'end_date' => now()->addMonth()->toDateString()]);
+        Review::create(['user_id' => $customer->id, 'user_name' => 'Người Cần Xóa', 'rating' => 5, 'comment' => 'Máy dùng rất tốt nhé', 'status' => 'approved']);
+
+        // Còn đơn đang xử lý: chưa xóa được.
+        $this->delete("/admin/customers/{$customer->id}")
+            ->assertSessionHas('toast', fn ($toast) => $toast['type'] === 'error' && str_contains($toast['message'], 'đang xử lý'));
+        $this->assertNotSoftDeleted($customer);
+
+        $order->update(['status' => 'completed']);
+        $total = $order->total;
+        $this->delete("/admin/customers/{$customer->id}")->assertRedirect(route('admin.customers.index'));
+
+        $this->assertSoftDeleted($customer);
+        $deleted = User::withTrashed()->find($customer->id);
+        $this->assertNull($deleted->phone);
+        $this->assertNull($deleted->email);
+        $this->assertNull($deleted->shipping_address);
+        $this->assertSame('Tài khoản đã xóa', $deleted->full_name);
+        $this->assertSame(0, $customer->wishlistItems()->count());
+        $this->assertDatabaseMissing('chat_sessions', ['id' => $session->id]);
+        $this->assertDatabaseMissing('chat_messages', ['chat_session_id' => $session->id]);
+        $this->assertNull(Voucher::withTrashed()->find($gift->id), 'Voucher tặng riêng chưa dùng bị xóa');
+
+        $order->refresh();
+        $this->assertNull($order->user_id);
+        $this->assertSame('Tài khoản đã xóa', $order->customer_name);
+        $this->assertSame('', $order->customer_phone);
+        $this->assertSame($total, $order->total, 'Đơn vẫn giữ số liệu doanh thu');
+        $this->assertDatabaseHas('reviews', ['user_id' => null, 'user_name' => 'Khách hàng', 'comment' => 'Máy dùng rất tốt nhé']);
+
+        // Số điện thoại được giải phóng: đăng ký lại được.
+        auth()->logout();
+        $this->post('/register', ['full_name' => 'Chủ Mới', 'phone' => '0944444444', 'password' => '123456', 'password_confirmation' => '123456'])
+            ->assertRedirect(route('login'));
+        $this->assertSame('Chủ Mới', User::where('phone', '0944444444')->value('full_name'));
+    }
+
+    public function test_admin_cannot_delete_admin_account(): void
+    {
+        $other = User::factory()->admin()->create();
+        $this->delete("/admin/customers/{$other->id}")->assertSessionHas('toast.type', 'error');
+        $this->assertNotSoftDeleted($other);
+    }
+
+    public function test_register_reclaims_phone_of_legacy_soft_deleted_account(): void
+    {
+        $old = User::factory()->create(['phone' => '0955555555']);
+        $old->delete(); // dữ liệu cũ: xóa mềm nhưng vẫn giữ số điện thoại
+
+        auth()->logout();
+        $this->post('/register', ['full_name' => 'Chủ Thật', 'phone' => '0955555555', 'password' => '123456', 'password_confirmation' => '123456'])
+            ->assertRedirect(route('login'));
+
+        $this->assertNull(User::withTrashed()->find($old->id)->phone);
+        $this->assertSame('Chủ Thật', User::where('phone', '0955555555')->value('full_name'));
+    }
+
+    public function test_changing_customer_phone_clears_verified_flag(): void
+    {
+        $customer = User::factory()->create(['phone' => '0911111112', 'phone_verified_at' => now()]);
+
+        $this->put("/admin/customers/{$customer->id}", ['full_name' => 'A', 'phone' => '0911111112', 'role' => 'customer', 'status' => 'active']);
+        $this->assertNotNull($customer->fresh()->phone_verified_at, 'Giữ nguyên số thì giữ trạng thái xác minh');
+
+        $this->put("/admin/customers/{$customer->id}", ['full_name' => 'A', 'phone' => '0911111113', 'role' => 'customer', 'status' => 'active']);
+        $this->assertNull($customer->fresh()->phone_verified_at);
+    }
+
+    public function test_admin_can_moderate_short_legacy_review_and_bad_edit_param_does_not_crash(): void
+    {
+        $review = Review::create(['user_name' => 'A', 'rating' => 4, 'comment' => 'Tốt lắm', 'status' => 'pending']);
+
+        $this->put("/admin/reviews/{$review->id}", ['rating' => 4, 'comment' => 'Tốt lắm', 'status' => 'approved'])
+            ->assertSessionHasNoErrors();
+        $this->assertSame('approved', $review->fresh()->status);
+
+        $this->put("/admin/reviews/{$review->id}", ['rating' => 4, 'comment' => 'Ngắn', 'status' => 'approved'])
+            ->assertSessionHasErrors('comment');
+
+        $this->get('/admin/customers?edit[]=1&edit[]=2')->assertOk();
+        $this->get('/admin/reviews?edit[]=1')->assertOk();
     }
 }

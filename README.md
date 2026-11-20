@@ -91,7 +91,7 @@ curl -X POST http://localhost:8000/payment/sepay/webhook -H "Authorization: Apik
 - **Chatbot AI**: trạng thái Gemini/offline, thống kê (phiên, tỉ lệ hài lòng, thời gian phản hồi, công cụ hay dùng), câu hỏi gần đây,
   cấu hình lời chào/câu hỏi gợi ý/bật-tắt, xem lại hội thoại; **kho kiến thức** để "dạy" chatbot chính sách cửa hàng.
 - Đơn hàng: tìm/lọc, đổi trạng thái theo luồng, **sửa thông tin người nhận và ghi chú** (không đổi giá/phí ship), cập nhật vận đơn, đối soát chuyển khoản, lưu trữ.
-- Khách hàng (số đơn, tổng chi tiêu, khóa/mở khóa, **sửa họ tên/email/SĐT/địa chỉ, trạng thái "Ngừng hoạt động", cấp quyền quản trị**),
+- Khách hàng (số đơn, tổng chi tiêu, khóa/mở khóa, **sửa họ tên/email/SĐT/địa chỉ, trạng thái "Ngừng hoạt động", cấp quyền quản trị, xóa tài khoản theo yêu cầu**: xóa dữ liệu cá nhân, ẩn danh đơn hàng/đánh giá, giải phóng SĐT và email để đăng ký lại),
   duyệt và **sửa đánh giá** (số sao, nội dung, gỡ ảnh), xử lý liên hệ, cài đặt cửa hàng.
 
 ## Quy tắc nghiệp vụ chính

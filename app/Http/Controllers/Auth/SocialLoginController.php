@@ -60,8 +60,13 @@ class SocialLoginController extends Controller
 
         $email = mb_strtolower(trim((string) ($claims['email'] ?? '')));
         $conflict = 'Email này đã gắn với một tài khoản khác. Vui lòng đăng nhập bằng số điện thoại và mật khẩu.';
-        if ($email !== '' && User::withTrashed()->where('email', $email)->exists()) {
+        if ($email !== '' && User::where('email', $email)->exists()) {
             throw new BusinessException($conflict, 409);
+        }
+        // Email / tài khoản Google-Facebook của tài khoản đã xóa được giải phóng để tạo tài khoản mới.
+        User::onlyTrashed()->where('firebase_uid', $uid)->update(['firebase_uid' => null]);
+        if ($email !== '') {
+            User::onlyTrashed()->where('email', $email)->update(['email' => null]);
         }
 
         $name = trim((string) ($claims['name'] ?? '')) ?: trim(Str::before($email, '@'));

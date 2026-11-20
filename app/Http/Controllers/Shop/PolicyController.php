@@ -70,7 +70,7 @@ class PolicyController extends Controller
             'intro' => 'Bạn có thể yêu cầu xóa tài khoản TechPhone và dữ liệu cá nhân bất cứ lúc nào, kể cả khi bạn đăng nhập bằng Facebook hoặc Google.',
             'sections' => [
                 ['Cách gửi yêu cầu', 'Gửi yêu cầu qua trang Liên hệ hoặc email/hotline của cửa hàng ở cuối trang, với tiêu đề "Yêu cầu xóa dữ liệu". Ghi rõ số điện thoại hoặc email của tài khoản và cách bạn đăng nhập (số điện thoại, Google hay Facebook).'],
-                ['Chúng tôi xử lý thế nào', 'Sau khi xác minh bạn là chủ tài khoản, chúng tôi xóa tài khoản, thông tin cá nhân, địa chỉ đã lưu, danh sách yêu thích và lịch sử trò chuyện trong vòng 30 ngày, rồi báo lại cho bạn. Đơn hàng đã phát sinh chỉ được giữ ở dạng ẩn danh khi pháp luật yêu cầu lưu chứng từ.'],
+                ['Chúng tôi xử lý thế nào', 'Sau khi xác minh bạn là chủ tài khoản, chúng tôi xóa tài khoản, họ tên, số điện thoại, email, địa chỉ đã lưu, danh sách yêu thích, lịch sử trò chuyện và voucher chưa dùng trong vòng 30 ngày, rồi báo lại cho bạn. Đơn hàng và đánh giá đã phát sinh chỉ được giữ ở dạng ẩn danh để phục vụ chứng từ kế toán. Nếu còn đơn đang xử lý, việc xóa được thực hiện sau khi đơn hoàn tất hoặc được hủy.'],
                 ['Gỡ quyền của ứng dụng trên Facebook', 'Trên Facebook, vào Cài đặt và quyền riêng tư → Cài đặt → Ứng dụng và trang web, chọn TechPhone rồi bấm Gỡ. Facebook sẽ ngừng chia sẻ dữ liệu với chúng tôi; để xóa dữ liệu đã lưu tại cửa hàng, hãy gửi yêu cầu như trên.'],
                 ['Gỡ quyền trên Google', 'Vào myaccount.google.com → Bảo mật → Ứng dụng và dịch vụ của bên thứ ba, chọn TechPhone rồi xóa quyền truy cập.'],
             ],

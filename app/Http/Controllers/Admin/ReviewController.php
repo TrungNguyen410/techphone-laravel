@@ -23,7 +23,7 @@ class ReviewController extends Controller
                 ->paginate(20)
                 ->withQueryString(),
             'filter' => $filter,
-            'editing' => $request->filled('edit') ? Review::with(['product', 'accessory'])->find($request->query('edit')) : null,
+            'editing' => is_numeric($request->query('edit')) ? Review::with(['product', 'accessory'])->find((int) $request->query('edit')) : null,
         ]);
     }
 
@@ -32,9 +32,11 @@ class ReviewController extends Controller
      */
     public function update(Request $request, Review $review, ImageUploader $uploader): RedirectResponse
     {
+        // Đánh giá cũ có thể ngắn hơn 10 ký tự: chỉ bắt độ dài tối thiểu khi admin thật sự sửa nội dung.
+        $commentChanged = trim((string) $request->input('comment')) !== trim((string) $review->comment);
         $data = $request->validate([
             'rating' => ['required', 'integer', 'between:1,5'],
-            'comment' => ['required', 'string', 'min:10', 'max:2000'],
+            'comment' => ['required', 'string', 'max:2000', ...($commentChanged ? ['min:10'] : [])],
             'status' => ['required', Rule::in(array_keys(Review::STATUSES))],
             'remove_images' => ['nullable', 'array'],
             'remove_images.*' => ['string'],
@@ -47,9 +49,6 @@ class ReviewController extends Controller
 
         $images = $review->images ?? [];
         $removed = array_values(array_intersect($images, $data['remove_images'] ?? []));
-        foreach ($removed as $image) {
-            $uploader->delete($image);
-        }
 
         $review->update([
             'rating' => $data['rating'],
@@ -57,6 +56,11 @@ class ReviewController extends Controller
             'status' => $data['status'],
             'images' => array_values(array_diff($images, $removed)),
         ]);
+
+        // Chỉ xóa file sau khi đã lưu CSDL thành công, để đánh giá không bao giờ trỏ tới ảnh đã mất.
+        foreach ($removed as $image) {
+            $uploader->delete($image);
+        }
 
         return redirect()->route('admin.reviews.index', $request->only('status_filter') ? ['status' => $request->input('status_filter')] : [])
             ->with('toast', ['type' => 'success', 'message' => 'Đã cập nhật đánh giá']);

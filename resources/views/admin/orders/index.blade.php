@@ -116,6 +116,7 @@
                 </form>
             @endif
 
+            @if ($selected->canEditReceiver())
             @php
                 $customerErrors = $errors->hasAny(['full_name', 'phone', 'email', 'address', 'province', 'ward', 'order_note']);
             @endphp
@@ -123,7 +124,7 @@
                 <summary><x-icon name="edit-2" /> Sửa thông tin người nhận &amp; ghi chú</summary>
                 <form class="admin-tracking-form" method="POST" action="{{ route('admin.orders.customer', $selected) }}">
                     @csrf @method('PUT')
-                    <p class="admin-page-note"><x-icon name="alert-circle" /> Chỉ đổi thông tin giao nhận; giá, phí vận chuyển và sản phẩm của đơn giữ nguyên.</p>
+                    <p class="admin-page-note"><x-icon name="alert-circle" /> Chỉ đổi thông tin giao nhận; giá, phí vận chuyển và sản phẩm của đơn giữ nguyên (không đổi được sang tỉnh có phí ship khác).</p>
                     @include('partials.shipping-address-fields', [
                         'prefix' => 'admin-order-'.$selected->id,
                         'provinces' => \App\Services\ShippingService::PROVINCES,
@@ -144,6 +145,7 @@
                     <button class="btn btn-primary">Lưu thông tin người nhận</button>
                 </form>
             </details>
+            @endif
 
             <form class="admin-tracking-form" method="POST" action="{{ route('admin.orders.shipping', $selected) }}">
                 @csrf @method('PUT')
